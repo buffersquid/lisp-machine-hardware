@@ -1,0 +1,24 @@
+# Ignore Vivado project garbage
+vivado/.Xil/
+vivado/*.jou
+vivado/*.log
+vivado/*.str
+vivado/*.cache/
+vivado/*.hw/
+vivado/*.ip_user_files/
+vivado/*.sim/
+vivado/*.runs/
+vivado/*.webtalk/
+vivado/*.xpr
+vivado/*.xpr.user
+vivado/*.xgui
+*.bit
+*.bin
+*.svf
+*.dcp
+*.vcd
+*.wdb
+*.ltx
+
+# General build products
+build/
