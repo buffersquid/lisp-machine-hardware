@@ -16,5 +16,6 @@ $(BIT_FILE):
 program_fpga: $(BIT_FILE)
 	$(VIVADO_BIN) -mode batch $(VIVADO_FLAGS) -source $(VIVADO_DIR)/program_fpga.tcl -tclargs $(TOP)
 
+.PHONY: clean
 clean:
 	rm -rf build/ *.jou *.log vivado/.Xil vivado/*.log vivado/*.jou
