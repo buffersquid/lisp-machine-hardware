@@ -8,7 +8,7 @@ set jobs [lindex $argv 1]
 if {$jobs eq ""} { set jobs 4 }
 
 create_project lisp_machine $build_dir -part xc7a35tcpg236-1 -force
-add_files [glob "$src_dir/*.v"]
+add_files [glob "$src_dir/*.sv"]
 add_files -fileset constrs_1 [glob "$constr_dir/*.xdc"]
 set_property top $top [current_fileset]
 
