@@ -22,3 +22,4 @@ vivado/*.xgui
 
 # General build products
 build/
+bin/
