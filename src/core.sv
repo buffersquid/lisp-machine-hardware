@@ -1,11 +1,18 @@
 `timescale 1ns / 1ps
+`default_nettype none
 
 module core (
-    input CLK,
+    input wire CLK,
     input wire [15:0] SWITCHES,
-    output wire [15:0] LEDS
+    output logic [7:0] CATHODES,
+    output logic [3:0] ANODES
 );
 
-  assign LEDS = SWITCHES;
+  seven_segment ssg (
+      .CLK(CLK),
+      .HEX(SWITCHES),
+      .CATHODES(CATHODES),
+      .ANODES(ANODES)
+  );
 
 endmodule
