@@ -2,17 +2,67 @@
 `default_nettype none
 
 module core (
-    input wire CLK,
-    input wire [15:0] SWITCHES,
-    output logic [7:0] CATHODES,
-    output logic [3:0] ANODES
+    input  wire         CLK,
+    input  wire  [15:0] SWITCHES,
+    output logic [ 7:0] CATHODES,
+    output logic [ 3:0] ANODES,
+    output logic [15:0] LEDS
 );
+  typedef enum logic [2:0] {
+    TYPE_NUMBER  = 3'b000
+  } tag_t;
+
+  typedef enum logic [3:0] {
+    FETCH,
+    EVAL_CONST,
+    HALT,
+    ERROR
+  } state_t;
+
+  // Eval registers
+  logic [15:0] EXP;
+  logic [15:0] VAL;
+  logic [11:0] ADDR;
+
+  // State registers
+  state_t STATE;
+
+  // Memory
+  logic [15:0] MEMORY[256];
+
+  initial begin
+      MEMORY[0] = {{16{1'b0}}};
+      MEMORY[1] = 16'hBEEF;
+      EXP = 16'h0001;
+      STATE = FETCH;
+  end
 
   seven_segment ssg (
       .CLK(CLK),
-      .HEX(SWITCHES),
+      .HEX(VAL),
       .CATHODES(CATHODES),
       .ANODES(ANODES)
   );
+
+  always_ff @(posedge CLK) begin
+      case (STATE)
+          FETCH: begin
+              case (EXP[14:12])
+                  TYPE_NUMBER: begin
+                      ADDR  <= EXP[11:0];
+                      STATE <= EVAL_CONST;
+                  end
+                  default: STATE <= ERROR;
+              endcase
+          end
+          EVAL_CONST: begin
+              VAL <= MEMORY[ADDR];
+              STATE <= HALT;
+          end
+          HALT: LEDS <= {{15{1'b0}}, 1'b1};
+          ERROR: LEDS <= 16'hAAAA;   // 10101010... Easy to see on the leds.
+          default: LEDS <= 16'h6666; // 01100110... Bad code fallback
+      endcase
+  end
 
 endmodule
