@@ -3,7 +3,7 @@
 
 module core (
     input  wire         CLK,
-    input  wire  [15:0] SWITCHES,
+    // input  wire  [15:0] SWITCHES,
     output logic [ 7:0] CATHODES,
     output logic [ 3:0] ANODES,
     output logic [15:0] LEDS
@@ -22,20 +22,24 @@ module core (
   // Eval registers
   logic [15:0] EXP;
   logic [15:0] VAL;
-  logic [11:0] ADDR;
+
+  // Logic registers
+  logic [11:0] ADDR_REQ;
+  logic [15:0] MEM_DATA;
 
   // State registers
   state_t STATE;
 
-  // Memory
-  logic [15:0] MEMORY[256];
-
   initial begin
-      MEMORY[0] = {{16{1'b0}}};
-      MEMORY[1] = 16'hBEEF;
-      EXP = 16'h0001;
-      STATE = FETCH;
+    EXP = 16'h0001; // [0][NUMBER][INDEX = 1]
+    STATE = FETCH;
   end
+
+  memory mem (
+      .CLK(CLK),
+      .ADDR_IN(ADDR_REQ),
+      .DATA_OUT(MEM_DATA)
+  );
 
   seven_segment ssg (
       .CLK(CLK),
@@ -49,14 +53,14 @@ module core (
           FETCH: begin
               case (EXP[14:12])
                   TYPE_NUMBER: begin
-                      ADDR  <= EXP[11:0];
+                      ADDR_REQ  <= EXP[11:0];
                       STATE <= EVAL_CONST;
                   end
                   default: STATE <= ERROR;
               endcase
           end
           EVAL_CONST: begin
-              VAL <= MEMORY[ADDR];
+              VAL <= MEM_DATA;
               STATE <= HALT;
           end
           HALT: LEDS <= {{15{1'b0}}, 1'b1};
