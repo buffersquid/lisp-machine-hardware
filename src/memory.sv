@@ -3,7 +3,9 @@
 
 module memory (
   input  wire         CLK,
+  input  wire         REQ,        // pull high for one clock cycle to request memory
   input  wire  [11:0] ADDR_IN,
+  output logic        DATA_READY,
   output logic [15:0] DATA_OUT
 );
   localparam int MEMORY_SIZE = 256;
@@ -17,7 +19,12 @@ module memory (
   end
 
   always_ff @(posedge CLK) begin
-    DATA_OUT <= MEMORY[ADDR_IN];
+    if (REQ) begin
+      DATA_OUT   <= MEMORY[ADDR_IN];
+      DATA_READY <= 1'b1;
+    end else begin
+      DATA_READY <= 1'b0;
+    end
   end
 
 endmodule
