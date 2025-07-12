@@ -33,6 +33,12 @@ module core (
     state_t   continue_state;
   } memory_read_t;
 
+  // Debugging errors
+  typedef enum logic [15:0] {
+    STATE_ERROR = 16'h6666,
+    FETCH_ERROR = 16'hAAAA
+  } error_t;
+
   //────────────────────────────────────────────────────────────
   // Registers
   //────────────────────────────────────────────────────────────
@@ -40,6 +46,8 @@ module core (
   logic [15:0] expr_next;
   logic [15:0] val = 16'h0000;
   logic [15:0] val_next;
+  logic [15:0] error = 16'h0000;
+  logic [15:0] error_next;
 
   //────────────────────────────────────────────────────────────
   // Memory
@@ -80,6 +88,7 @@ module core (
     state_next = state; // default, stay in the same state
     expr_next = expr;
     val_next = val;
+    error_next = error;
 
     LEDS = 16'b0000;
 
@@ -99,7 +108,10 @@ module core (
             memory_read.continue_state = EvalCar;
             state_next = MemWait;
           end
-          default: state_next = Error;
+          default: begin
+            error_next = FETCH_ERROR;
+            state_next = Error;
+          end
         endcase
       end
 
@@ -118,8 +130,8 @@ module core (
       end
 
       Halt: LEDS = {{15{1'b0}}, 1'b1};
-      Error: LEDS = 16'hAAAA;   // 10101010... Easy to see on the leds.
-      default: LEDS = 16'h6666; // 01100110... Bad code fallback
+      Error: LEDS = error;
+      default: LEDS = STATE_ERROR;
     endcase
   end
 
@@ -133,6 +145,7 @@ module core (
     state <= state_next;
     expr  <= expr_next;
     val   <= val_next;
+    error <= error_next;
   end
 
 endmodule
