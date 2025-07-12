@@ -2,28 +2,28 @@
 `default_nettype none
 
 module memory (
-  input  wire         CLK,
-  input  wire         REQ,        // pull high for one clock cycle to request memory
-  input  wire  [11:0] ADDR_IN,
-  output logic        DATA_READY,
-  output logic [15:0] DATA_OUT
+  input  wire         clk,
+  input  wire         req,        // pull high for one clock cycle to request memory
+  input  wire  [11:0] addr_in,
+  output logic        data_ready,
+  output logic [15:0] data_out
 );
-  localparam int MEMORY_SIZE = 256;
+  localparam int MemorySize = 256;
 
   (* ram_style = "block" *)
-  logic [15:0] MEMORY[MEMORY_SIZE];
+  logic [15:0] memory[MemorySize];
 
   initial begin
-    MEMORY[0] = {{16{1'b0}}};
-    MEMORY[1] = 16'hBEEF;
+    memory[0] = {{16{1'b0}}};
+    memory[1] = 16'hBEEF;
   end
 
-  always_ff @(posedge CLK) begin
-    if (REQ) begin
-      DATA_OUT   <= MEMORY[ADDR_IN];
-      DATA_READY <= 1'b1;
+  always_ff @(posedge clk) begin
+    if (req) begin
+      data_out   <= memory[addr_in];
+      data_ready <= 1'b1;
     end else begin
-      DATA_READY <= 1'b0;
+      data_ready <= 1'b0;
     end
   end
 

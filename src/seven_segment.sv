@@ -2,23 +2,23 @@
 `default_nettype none
 
 module seven_segment (
-  input  wire         CLK,       // 100 MHz system clock
-  input  wire  [15:0] HEX,       // four 4‑bit digits
-  output logic [ 7:0] CATHODES,  
-  output logic [ 3:0] ANODES
+  input  wire         clk,       // 100 MHz system clock
+  input  wire  [15:0] hex,       // four 4‑bit digits
+  output logic [ 7:0] cathodes,
+  output logic [ 3:0] anodes
 );
 
   //─────────────────────────────────────────────────────
   // parameters & lookups
   //─────────────────────────────────────────────────────
-  localparam int CLK_FREQ     = 100_000_000;
-  localparam int REFRESH_HZ   = 500;
-  localparam int CNT_MAX      = CLK_FREQ/REFRESH_HZ/2;
+  localparam int ClkFreq   = 100_000_000;
+  localparam int RefreshHz = 500;
+  localparam int CountMax  = ClkFreq/RefreshHz/2;
 
   typedef enum logic [1:0] { DIG0, DIG1, DIG2, DIG3 } digit_t;
 
   // 0‑F → segment patterns
-  localparam logic [7:0] SEGMENT_LOOKUP [0:15] = '{
+  localparam logic [7:0] SegmentLookup [0:15] = '{
     8'h81, 8'hCF, 8'h92, 8'h86,
     8'hCC, 8'hA4, 8'hA0, 8'h8F,
     8'h80, 8'h8C, 8'h88, 8'hE0,
@@ -26,15 +26,15 @@ module seven_segment (
   };
 
   // which anode to drive active (low)
-  localparam logic [3:0] ANODE_LOOKUP [0:3] = '{4'b1110,4'b1101,4'b1011,4'b0111};
+  localparam logic [3:0] AnodeLookup [0:3] = '{4'b1110,4'b1101,4'b1011,4'b0111};
 
   //─────────────────────────────────────────────────────
   // clock divider → 500 Hz refresh clock
   //─────────────────────────────────────────────────────
   logic [31:0]         div_counter = 0;
   logic tick;
-  always_ff @(posedge CLK) begin
-    if (div_counter == CNT_MAX-1) begin
+  always_ff @(posedge clk) begin
+    if (div_counter == CountMax-1) begin
       div_counter <= 0;
       tick        <= 1'b1;
     end else begin
@@ -47,7 +47,7 @@ module seven_segment (
   // digit‐scan & lookup
   //─────────────────────────────────────────────────────
   digit_t current_digit = DIG0;
-  always_ff @(posedge CLK) begin
+  always_ff @(posedge clk) begin
     if (tick) begin
       // rotate through DIG0→DIG1→DIG2→DIG3→DIG0
       case (current_digit)
@@ -59,8 +59,8 @@ module seven_segment (
       endcase
 
       // update anodes and cathodes from lookup tables
-      ANODES    <= ANODE_LOOKUP[current_digit];
-      CATHODES <= SEGMENT_LOOKUP[ HEX[4*current_digit +: 4] ];
+      anodes   <= AnodeLookup[current_digit];
+      cathodes <= SegmentLookup[hex[4*current_digit +: 4]];
     end
   end
 
