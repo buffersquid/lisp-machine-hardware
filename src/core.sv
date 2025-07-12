@@ -29,7 +29,7 @@ module core (
   logic        mem_ready;
 
   // State registers
-  state_t state;
+  state_t state, next_state;
 
   initial begin
     expr = 16'h0001; // [0][number_t][INDEX = 1]
@@ -51,30 +51,35 @@ module core (
     .anodes(ANODES)
   );
 
-  always_ff @(posedge CLK) begin
-    LEDS <= 16'b0000;
-    mem_req <= 1'b0; // By default, we don't request memory
+  always_comb begin
+    next_state = state; // default, stay in the same state
+    LEDS = 16'b0000;
+    mem_req = 1'b0; // By default, we don't request memory
     case (state)
       Fetch: begin
         case (expr[14:12])
           TYPE_NUMBER: begin
-            addr_req  <= expr[11:0];
-            mem_req <= 1'b1;
-            state <= EvalConst;
+            addr_req   = expr[11:0];
+            mem_req    = 1'b1;
+            next_state = EvalConst;
           end
-          default: state <= Error;
+          default: next_state = Error;
         endcase
       end
       EvalConst: begin
         if (mem_ready) begin
-          val <= mem_data;
-          state <= Halt;
+          val = mem_data;
+          next_state = Halt;
         end
       end
-      Halt: LEDS <= {{15{1'b0}}, 1'b1};
-      Error: LEDS <= 16'hAAAA;   // 10101010... Easy to see on the leds.
-      default: LEDS <= 16'h6666; // 01100110... Bad code fallback
+      Halt: LEDS = {{15{1'b0}}, 1'b1};
+      Error: LEDS = 16'hAAAA;   // 10101010... Easy to see on the leds.
+      default: LEDS = 16'h6666; // 01100110... Bad code fallback
     endcase
+  end
+
+  always_ff @(posedge CLK) begin
+    state <= next_state;
   end
 
 endmodule
