@@ -34,11 +34,9 @@ module core (
   //────────────────────────────────────────────────────────────
   // Registers
   //────────────────────────────────────────────────────────────
-  logic [15:0] expr  = 16'h0001;
-  logic [15:0] val   = 16'h0000;
-  state_t state      = Fetch;
-  state_t next_state = Fetch;
-  state_t after_read = Fetch;
+  logic [15:0] expr, expr_next = 16'h0001;
+  logic [15:0] val,  val_next  = 16'h0000;
+  state_t state, state_next, after_read  = Fetch;
 
   //────────────────────────────────────────────────────────────
   // Memory
@@ -73,7 +71,10 @@ module core (
     memory_request.address = '0;
     memory_request.continue_state = state;
 
-    next_state = state; // default, stay in the same state
+    state_next = state; // default, stay in the same state
+    expr_next = expr;
+    val_next = val;
+
     LEDS = 16'b0000;
 
     case (state)
@@ -84,19 +85,19 @@ module core (
             memory_request.active = 1'b1;
             memory_request.address = expr[11:0];
             memory_request.continue_state = EvalConst;
-            next_state = MemWait;
+            state_next = MemWait;
           end
-          default: next_state = Error;
+          default: state_next = Error;
         endcase
       end
 
       MemWait: begin
-        if (mem_ready) next_state = after_read;
+        if (mem_ready) state_next = after_read;
       end
 
       EvalConst: begin
-        val = mem_data;
-        next_state = Halt;
+        val_next = mem_data;
+        state_next = Halt;
       end
 
       Halt: LEDS = {{15{1'b0}}, 1'b1};
@@ -112,7 +113,9 @@ module core (
     if (memory_request.active) begin
       after_read <= memory_request.continue_state;
     end
-    state <= next_state;
+    state <= state_next;
+    expr  <= expr_next;
+    val   <= val_next;
   end
 
 endmodule
