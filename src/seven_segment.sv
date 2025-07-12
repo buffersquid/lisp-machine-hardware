@@ -31,14 +31,15 @@ module seven_segment (
   //─────────────────────────────────────────────────────
   // clock divider → 500 Hz refresh clock
   //─────────────────────────────────────────────────────
-  logic                slow_clk    = 1'b0;
   logic [31:0]         div_counter = 0;
+  logic tick;
   always_ff @(posedge CLK) begin
     if (div_counter == CNT_MAX-1) begin
       div_counter <= 0;
-      slow_clk    <= ~slow_clk;
+      tick        <= 1'b1;
     end else begin
       div_counter <= div_counter + 1;
+      tick        <= 1'b0;
     end
   end
 
@@ -46,19 +47,21 @@ module seven_segment (
   // digit‐scan & lookup
   //─────────────────────────────────────────────────────
   digit_t current_digit = DIG0;
-  always_ff @(posedge slow_clk) begin
-    // rotate through DIG0→DIG1→DIG2→DIG3→DIG0
-    case (current_digit)
-      DIG0: current_digit <= DIG1;
-      DIG1: current_digit <= DIG2;
-      DIG2: current_digit <= DIG3;
-      DIG3: current_digit <= DIG0;
-      default: current_digit <= DIG0;
-    endcase
+  always_ff @(posedge CLK) begin
+    if (tick) begin
+      // rotate through DIG0→DIG1→DIG2→DIG3→DIG0
+      case (current_digit)
+        DIG0: current_digit <= DIG1;
+        DIG1: current_digit <= DIG2;
+        DIG2: current_digit <= DIG3;
+        DIG3: current_digit <= DIG0;
+        default: current_digit <= DIG0;
+      endcase
 
-    // update anodes and cathodes from lookup tables
-    ANODES    <= ANODE_LOOKUP[current_digit];
-    CATHODES <= SEGMENT_LOOKUP[ HEX[4*current_digit +: 4] ];
+      // update anodes and cathodes from lookup tables
+      ANODES    <= ANODE_LOOKUP[current_digit];
+      CATHODES <= SEGMENT_LOOKUP[ HEX[4*current_digit +: 4] ];
+    end
   end
 
 endmodule
