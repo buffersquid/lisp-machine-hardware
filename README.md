@@ -1,3 +1,10 @@
+# LISP Machine (cons all the way down)
+
+## Contribution:
+[Style Guide for System Verilog](https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md)
+
+---
+
 # LISP Machine Hardware Implementation Plan
 
 ## Phase 1: Data Representation and Memory

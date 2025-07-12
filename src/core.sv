@@ -36,7 +36,6 @@ module core (
   //────────────────────────────────────────────────────────────
   logic [15:0] expr, expr_next = 16'h0001;
   logic [15:0] val,  val_next  = 16'h0000;
-  state_t state, state_next, after_read  = Fetch;
 
   //────────────────────────────────────────────────────────────
   // Memory
@@ -64,6 +63,7 @@ module core (
   //────────────────────────────────────────────────────────────
   // Combinational FSM Logic
   //────────────────────────────────────────────────────────────
+  state_t state, state_next, after_read  = Fetch;
   memory_request_t memory_request;
   always_comb begin
     // Default memory request (inactive)
