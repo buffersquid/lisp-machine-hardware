@@ -16,6 +16,9 @@ module memory (
   initial begin
     memory[0] = {{16{1'b0}}};
     memory[1] = 16'hBEEF;
+    memory[2] = 16'hDEAD;
+    memory[3] = 16'h0001; // CDR pointer to BEEF
+    memory[4] = 16'h0002; // CAR pointer to DEAD
   end
 
   always_ff @(posedge clk) begin
