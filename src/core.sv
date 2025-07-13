@@ -2,10 +2,10 @@
 `default_nettype none
 
 module core (
-  input  wire         CLK,
-  output logic [ 7:0] CATHODES,
-  output logic [ 3:0] ANODES,
-  output logic [15:0] LEDS
+  input  wire         clk,
+  output logic [ 7:0] cathodes,
+  output logic [ 3:0] anodes,
+  output logic [15:0] leds
 );
 
   //────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ module core (
   logic        write_enable;
   logic [11:0] write_result_addr;
   memory mem (
-    .clk(CLK),
+    .clk(clk),
     .req(memory_read.active),
     .addr_in(memory_read.address),
     .data_ready(mem_ready),
@@ -73,10 +73,10 @@ module core (
   // Seven-segment display
   //────────────────────────────────────────────────────────────
   seven_segment ssg (
-    .clk(CLK),
+    .clk(clk),
     .hex(val),
-    .cathodes(CATHODES),
-    .anodes(ANODES)
+    .cathodes(cathodes),
+    .anodes(anodes)
   );
 
   //────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ module core (
     val_next = val;
     error_next = error;
 
-    LEDS = 16'b0000;
+    leds = 16'b0000;
 
     case (state)
 
@@ -147,16 +147,16 @@ module core (
         endcase
       end
 
-      Halt: LEDS = {{15{1'b0}}, 1'b1};
-      Error: LEDS = error;
-      default: LEDS = STATE_ERROR;
+      Halt: leds = {{15{1'b0}}, 1'b1};
+      Error: leds = error;
+      default: leds = STATE_ERROR;
     endcase
   end
 
   //────────────────────────────────────────────────────────────
   // Clocked State & Continuation Update
   //────────────────────────────────────────────────────────────
-  always_ff @(posedge CLK) begin
+  always_ff @(posedge clk) begin
     if (memory_read.active) begin
       after_read <= memory_read.continue_state;
     end
