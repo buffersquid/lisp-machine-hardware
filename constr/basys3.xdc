@@ -7,9 +7,9 @@
 ## ============================================================================
 
 ## Clock
-set_property PACKAGE_PIN W5                [get_ports CLK]
-set_property IOSTANDARD LVCMOS33           [get_ports CLK]
-create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports CLK]
+set_property PACKAGE_PIN W5                [get_ports CLK100MHZ]
+set_property IOSTANDARD LVCMOS33           [get_ports CLK100MHZ]
+create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports CLK100MHZ]
 
 ## ============================================================================
 ## Switches (SW15–SW0)
@@ -114,16 +114,16 @@ set_property IOSTANDARD LVCMOS33           [get_ports {ANODES[3]}]
 ## ============================================================================
 ## Buttons
 ## ============================================================================
-# set_property PACKAGE_PIN U18               [get_ports BTNC]
-# set_property IOSTANDARD LVCMOS33           [get_ports BTNC]
-# set_property PACKAGE_PIN T18               [get_ports BTNT]
-# set_property IOSTANDARD LVCMOS33           [get_ports BTNT]
-# set_property PACKAGE_PIN W19               [get_ports BTNL]
-# set_property IOSTANDARD LVCMOS33           [get_ports BTNL]
-# set_property PACKAGE_PIN T17               [get_ports BTNR]
-# set_property IOSTANDARD LVCMOS33           [get_ports BTNR]
-# set_property PACKAGE_PIN U17               [get_ports BTNB]
-# set_property IOSTANDARD LVCMOS33           [get_ports BTNB]
+# set_property PACKAGE_PIN U18               [get_ports {BTN[0]}] # Center
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[0]}] # Center
+# set_property PACKAGE_PIN T18               [get_ports {BTN[1]}] # Top
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[1]}] # TOP
+# set_property PACKAGE_PIN W19               [get_ports {BTN[2]}] # Left
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[2]}] # Left
+# set_property PACKAGE_PIN T17               [get_ports {BTN[3]}] # Right
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[3]}] # Right
+# set_property PACKAGE_PIN U17               [get_ports {BTN[4]}] # Bottom
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[4]}] # Bottom
 
 ## ============================================================================
 ## Pmod Header JA
