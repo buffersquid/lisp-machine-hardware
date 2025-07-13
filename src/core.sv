@@ -23,6 +23,7 @@ module core (
     MemWait,
     EvalConst,
     EvalCar,
+    Apply,
     Halt,
     Error
   } state_t;
@@ -111,7 +112,7 @@ module core (
           TYPE_CONS: begin
             memory_read.active = 1'b1;
             memory_read.address = expr[11:0];  // car is at base address
-            memory_read.continue_state = EvalCar;
+            memory_read.continue_state = Apply;
             state_next = MemWait;
           end
           default: begin
@@ -133,6 +134,17 @@ module core (
       EvalCar: begin
         expr_next = mem_data;
         state_next = Fetch;
+      end
+
+      Apply: begin
+        // We came from a cons (a . b), but we need to know if the first
+        // symbol is a primitive/function/proc or an atom (number)
+        case (mem_data[14:11])
+          TYPE_NUMBER: begin
+            val_next = expr;
+            state_next = Halt;
+          end
+        endcase
       end
 
       Halt: LEDS = {{15{1'b0}}, 1'b1};

@@ -28,6 +28,7 @@ module memory (
     memory[2] = 16'hDEAD;
     memory[3] = 16'h0001; // CDR pointer to BEEF
     memory[4] = 16'h0002; // CAR pointer to DEAD
+    // expr = 15'h1004 // Cons pointer to cons data
   end
 
   // ─── Read FSM ────────────────────────────────────────────────────
