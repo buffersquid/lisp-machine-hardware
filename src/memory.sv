@@ -14,16 +14,17 @@ module memory (
   output logic [11:0] write_result_addr
 );
   localparam int MemorySize = 256;
-  // For now, HEAP_START needs to be max memory index + 1. Manually edit.
-  localparam int HEAP_START = 5; // NIL. Can be pushed forward later if need be. Basically ROM.
+  // For now, HeapStart needs to be max memory index + 1. Manually edit.
+  localparam int HeapStart = 5; // NIL. Can be pushed forward later if need be. Basically ROM.
 
   (* ram_style = "block" *)
   logic [15:0] memory[MemorySize];
 
-  logic [11:0] heap_ptr = HEAP_START;
+  logic [15:0] nil = 16'h0000;
+  logic [11:0] heap_ptr = HeapStart;
 
   initial begin
-    memory[0] = {{16{1'b0}}};
+    memory[0] = nil;
     memory[1] = 16'hBEEF;
     memory[2] = 16'hDEAD;
     memory[3] = 16'h0001; // CDR pointer to BEEF
