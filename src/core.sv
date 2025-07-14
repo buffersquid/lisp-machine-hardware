@@ -3,6 +3,8 @@
 
 module core (
   input  wire         clk,
+  input  wire         btn_start,
+  input  wire  [15:0] switches,
   output logic [ 7:0] cathodes,
   output logic [ 3:0] anodes,
   output logic [15:0] leds
@@ -19,6 +21,7 @@ module core (
   } tag_t;
 
   typedef enum logic [3:0] {
+    SelectExpr,
     Fetch,
     MemWait,
     EvalConst,
@@ -43,7 +46,7 @@ module core (
   //────────────────────────────────────────────────────────────
   // Registers
   //────────────────────────────────────────────────────────────
-  logic [15:0] expr = {1'b0, TYPE_CONS, 12'h004};
+  logic [15:0] expr = 16'h0000;
   logic [15:0] expr_next;
   logic [15:0] val = 16'h0000;
   logic [15:0] val_next;
@@ -82,9 +85,12 @@ module core (
   //────────────────────────────────────────────────────────────
   // Combinational FSM Logic
   //────────────────────────────────────────────────────────────
-  // state_t state, state_next, after_read = Fetch;
-  state_t state = Fetch;
+  state_t state = SelectExpr;
   state_t state_next, after_read;
+
+  logic [15:0] user_expr;
+  logic        go_pressed, go_prev;
+
   memory_read_t memory_read;
   always_comb begin
     // Default memory request (inactive)
@@ -97,9 +103,21 @@ module core (
     val_next = val;
     error_next = error;
 
+    user_expr = switches;
     leds = 16'b0000;
 
     case (state)
+
+      SelectExpr: begin
+        val_next = switches;
+        if (go_pressed) begin
+          val_next = 16'h0000;
+          expr_next = switches;
+          state_next = Fetch;
+        end else begin
+          state_next = SelectExpr;
+        end
+      end
 
       Fetch: begin
         case (expr[14:12])
@@ -164,6 +182,12 @@ module core (
     expr  <= expr_next;
     val   <= val_next;
     error <= error_next;
+  end
+
+  // For latching the expr user input
+  always_ff @(posedge clk) begin
+    go_prev    <= btn_start;
+    go_pressed <= btn_start & ~go_prev; // Edge detection
   end
 
 endmodule
