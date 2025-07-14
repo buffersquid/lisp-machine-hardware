@@ -9,6 +9,7 @@ module top (
 
   core my_core (
     .clk(CLK100MHZ),
+    .rst(BTN[4]),
     .btn_start(BTN[0]),
     .switches(SWITCHES),
     .leds(LEDS),

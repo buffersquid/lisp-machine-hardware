@@ -117,14 +117,18 @@ set_property IOSTANDARD LVCMOS33           [get_ports {ANODES[3]}]
 # Center
 set_property PACKAGE_PIN U18               [get_ports {BTN[0]}]
 set_property IOSTANDARD LVCMOS33           [get_ports {BTN[0]}]
-# set_property PACKAGE_PIN T18               [get_ports {BTN[1]}] # Top
-# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[1]}] # Top
-# set_property PACKAGE_PIN W19               [get_ports {BTN[2]}] # Left
-# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[2]}] # Left
-# set_property PACKAGE_PIN T17               [get_ports {BTN[3]}] # Right
-# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[3]}] # Right
-# set_property PACKAGE_PIN U17               [get_ports {BTN[4]}] # Bottom
-# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[4]}] # Bottom
+## Top
+# set_property PACKAGE_PIN T18               [get_ports {BTN[1]}
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[1]}
+## Left
+# set_property PACKAGE_PIN W19               [get_ports {BTN[2]}]
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[2]}]
+## Right
+# set_property PACKAGE_PIN T17               [get_ports {BTN[3]}]
+# set_property IOSTANDARD LVCMOS33           [get_ports {BTN[3]}]
+# Bottom
+set_property PACKAGE_PIN U17               [get_ports {BTN[4]}]
+set_property IOSTANDARD LVCMOS33           [get_ports {BTN[4]}]
 
 ## ============================================================================
 ## Pmod Header JA
