@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module memory_sim();
-  logic        clk;
+  logic        clk = 0;
   logic        req;
   logic [11:0] addr_in;
   logic        data_ready;
@@ -21,10 +21,7 @@ module memory_sim();
     .write_result_addr(write_result_addr)
   );
 
-  always begin
-    clk = 1; #10;
-    clk = 0; #10;
-  end
+  always #10 clk = ~clk;
 
   initial begin
     write_data = 16'hBEEF;
