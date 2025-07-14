@@ -3,6 +3,7 @@
 
 module core (
   input  wire         clk,
+  input  wire         rst,
   input  wire         btn_start,
   input  wire  [15:0] switches,
   output logic [ 7:0] cathodes,
@@ -175,13 +176,21 @@ module core (
   // Clocked State & Continuation Update
   //────────────────────────────────────────────────────────────
   always_ff @(posedge clk) begin
-    if (memory_read.active) begin
-      after_read <= memory_read.continue_state;
+    if (rst) begin
+      state      <= SelectExpr;
+      after_read <= SelectExpr;
+      expr       <= 16'h0000;
+      val        <= 16'h0000;
+      error      <= 16'h0000;
+    end else begin
+      if (memory_read.active) begin
+        after_read <= memory_read.continue_state;
+      end
+      state <= state_next;
+      expr  <= expr_next;
+      val   <= val_next;
+      error <= error_next;
     end
-    state <= state_next;
-    expr  <= expr_next;
-    val   <= val_next;
-    error <= error_next;
   end
 
   // For latching the expr user input
