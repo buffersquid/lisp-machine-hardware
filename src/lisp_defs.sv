@@ -38,6 +38,10 @@ package lisp_defs;
   //────────────────────────────────────────────────────────────
   localparam logic [15:0] LISP_NIL = 16'h0000;
 
+  // Special memory layout parameters
+  localparam int MemorySize = 256;
+  localparam int HeapStart  = 5;   // Start of heap cells after ROM/NIL/etc.
+
   // Error codes
   localparam logic [15:0] STATE_ERROR = 16'h6666;
   localparam logic [15:0] FETCH_ERROR = 16'hAAAA;
