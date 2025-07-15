@@ -23,9 +23,9 @@ module memory (
     ConsWriteCar
   } cons_state_t;
 
+  // Special memory layout parameters
   localparam int MemorySize = 256;
-  // For now, HeapStart needs to be max memory index + 1. Manually edit.
-  localparam int HeapStart = 5; // NIL. Can be pushed forward later if need be. Basically ROM.
+  localparam int HeapStart  = 5;   // Start of heap cells after ROM/NIL/etc.
 
   (* ram_style = "block" *)
   logic [15:0] memory[MemorySize];
