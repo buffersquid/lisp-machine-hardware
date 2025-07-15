@@ -1,6 +1,9 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+`include "lisp_defs.sv"
+import lisp_defs::*;
+
 module memory (
   input  wire         clk,
   // ─── Read Interface ──────────────────────────────────────────────
@@ -20,11 +23,10 @@ module memory (
   (* ram_style = "block" *)
   logic [15:0] memory[MemorySize];
 
-  logic [15:0] nil = 16'h0000;
   logic [11:0] heap_ptr = HeapStart;
 
   initial begin
-    memory[0] = nil;
+    memory[0] = LISP_NIL;
     memory[1] = 16'hBEEF;
     memory[2] = 16'hDEAD;
     memory[3] = 16'h0001; // CDR pointer to BEEF
