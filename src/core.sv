@@ -28,18 +28,12 @@ module core (
   //────────────────────────────────────────────────────────────
   logic [15:0] mem_data;
   logic        mem_ready;
-  logic [15:0] write_data;
-  logic        write_enable;
-  logic [11:0] write_result_addr;
   memory mem (
     .clk(clk),
     .req(memory_read.active),
     .addr_in(memory_read.address),
     .data_ready(mem_ready),
-    .data_out(mem_data),
-    .write_enable(write_enable),
-    .write_data(write_data),
-    .write_result_addr(write_result_addr)
+    .data_out(mem_data)
   );
 
   //────────────────────────────────────────────────────────────

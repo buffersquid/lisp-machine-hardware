@@ -6,9 +6,12 @@ module memory_sim();
   logic [11:0] addr_in;
   logic        data_ready;
   logic [15:0] data_out;
-  logic        write_enable;
-  logic [15:0] write_data;
-  logic [11:0] write_result_addr;
+
+  logic        cons_en;
+  logic [15:0] cons_car;
+  logic [15:0] cons_cdr;
+  logic        cons_done;
+  logic [15:0] cons_ptr;
 
   memory m0 (
     .clk(clk),
@@ -16,37 +19,33 @@ module memory_sim();
     .addr_in(addr_in),
     .data_ready(data_ready),
     .data_out(data_out),
-    .write_enable(write_enable),
-    .write_data(write_data),
-    .write_result_addr(write_result_addr)
+    .cons_en(cons_en),
+    .cons_car(cons_car),
+    .cons_cdr(cons_cdr),
+    .cons_done(cons_done),
+    .cons_ptr(cons_ptr)
   );
 
   always #10 clk = ~clk;
 
   initial begin
-    write_data = 16'hBEEF;
-    write_enable = 1;
+    cons_car = 16'hDEAD;
+    cons_cdr = 16'hBEEF;
+    cons_en  = 1'b1;
     #20;
-    write_data = 16'hDEAD;
+    cons_en = 1'b0;
     #20;
-    write_data = 16'hDEF0;
+    cons_car = 16'h1234;
+    cons_cdr = 16'h5678;
+    cons_en  = 1'b1;
     #20;
-    write_enable = 0;
+    cons_en = 1'b0;
     #20;
-    req = 1;
-    addr_in = 12'h001;
+    cons_car = 16'hABCD;
+    cons_cdr = 16'hEF01;
+    cons_en  = 1'b1;
     #20;
-    req = 0;
-    #20;
-    req = 1;
-    addr_in = 12'h002;
-    #20;
-    req = 0;
-    #20;
-    req = 1;
-    addr_in = 12'h003;
-    #20;
-    req = 0;
+    cons_en = 1'b0;
   end
 
 endmodule
