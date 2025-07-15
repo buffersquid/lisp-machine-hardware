@@ -4,7 +4,10 @@
 `include "lisp_defs.sv"
 import lisp_defs::*;
 
-module memory (
+module memory #(
+  parameter int MemorySize = lisp_defs::MemorySize,
+  parameter int HeapStart = lisp_defs::HeapStart
+)(
   input  wire         clk,
   input  wire         rst,
   // ─── Read Interface ──────────────────────────────────────────────
@@ -23,10 +26,6 @@ module memory (
     ConsIdle,
     ConsWriteCar
   } cons_state_t;
-
-  // Special memory layout parameters
-  localparam int MemorySize = 256;
-  localparam int HeapStart  = 5;   // Start of heap cells after ROM/NIL/etc.
 
   (* ram_style = "block" *)
   logic [15:0] memory[MemorySize];
