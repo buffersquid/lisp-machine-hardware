@@ -28,7 +28,8 @@ module core_sim();
 
   task clear_memory(input logic [15:0] mem[MemorySize]);
     begin
-      for (int i = 0; i < MemorySize; i++) mem[i] = 16'h0000;
+      mem[0] = LISP_NIL;
+      for (int i = 1; i < MemorySize; i++) mem[i] = 16'h0000;
     end
   endtask
 
