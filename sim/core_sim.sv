@@ -1,5 +1,8 @@
 `timescale 1ns / 1ps
 
+`include "../src/lisp_defs.sv"
+import lisp_defs::*;
+
 module core_sim();
   logic clk = 0;
   logic rst = 0;
@@ -31,7 +34,7 @@ module core_sim();
 
   // Wait until system finishes execution
   task wait_until_done;
-    while (d0.state !== d0.Halt && d0.state !== d0.Error) begin
+    while (d0.state !== Halt && d0.state !== Error) begin
       @(posedge clk);
     end
   endtask
@@ -70,7 +73,7 @@ module core_sim();
       wait_until_done();
 
       // ───── Validate results ───────────────────
-      if (d0.state == d0.Error) begin
+      if (d0.state == Error) begin
         $fatal(1, "Execution failed: error = %h", d0.error);
       end else if (d0.val !== expected_val) begin
         $fatal(1, "Assertion failed: val = %h (expected %h)", d0.val, expected_val);
@@ -87,7 +90,7 @@ module core_sim();
     clear_memory(mem);
     mem[1] = 16'hDEAD;
     run_expr_via_button(
-      {1'b0, d0.TYPE_NUMBER, 12'h001},
+      {1'b0, TYPE_NUMBER, 12'h001},
       mem,
       16'hDEAD
     );
@@ -99,9 +102,9 @@ module core_sim();
     mem[3] = 16'h0001; // cdr = 1
     mem[4] = 16'h0002; // car = 2
     run_expr_via_button(
-      16'h1004, // CONS at address 4
+      {1'b0, TYPE_CONS, 12'h004},
       mem,
-      16'h1004  // Returns pointer to cons
+      {1'b0, TYPE_CONS, 12'h004}
     );
 
     $display("✅ All tests passed!");

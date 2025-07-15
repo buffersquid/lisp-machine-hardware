@@ -1,6 +1,9 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+`include "lisp_defs.sv"
+import lisp_defs::*;
+
 module core (
   input  wire         clk,
   input  wire         rst,
@@ -10,40 +13,6 @@ module core (
   output logic [ 3:0] anodes,
   output logic [15:0] leds
 );
-
-  //────────────────────────────────────────────────────────────
-  // Types
-  //────────────────────────────────────────────────────────────
-  typedef logic [11:0] address_t;
-
-  typedef enum logic [2:0] {
-    TYPE_NUMBER,
-    TYPE_CONS
-  } tag_t;
-
-  typedef enum logic [3:0] {
-    SelectExpr,
-    Fetch,
-    MemWait,
-    EvalConst,
-    EvalCar,
-    Apply,
-    Halt,
-    Error
-  } state_t;
-
-  typedef struct packed {
-    logic     active;
-    address_t address;
-    state_t   continue_state;
-  } memory_read_t;
-
-  // Debugging errors
-  typedef enum logic [15:0] {
-    STATE_ERROR = 16'h6666,
-    FETCH_ERROR = 16'hAAAA
-  } error_t;
-
   //────────────────────────────────────────────────────────────
   // Registers
   //────────────────────────────────────────────────────────────
