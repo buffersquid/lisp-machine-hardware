@@ -2,6 +2,7 @@
 
 module memory_sim();
   logic        clk = 0;
+  logic        rst = 0;
   logic        req;
   logic [11:0] addr_in;
   logic        data_ready;
@@ -15,6 +16,7 @@ module memory_sim();
 
   memory m0 (
     .clk(clk),
+    .rst(rst),
     .req(req),
     .addr_in(addr_in),
     .data_ready(data_ready),
@@ -46,6 +48,10 @@ module memory_sim();
     cons_en  = 1'b1;
     #20;
     cons_en = 1'b0;
+    #20;
+    rst = 1;
+    #20;
+    rst = 0;
   end
 
 endmodule

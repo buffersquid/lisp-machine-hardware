@@ -30,6 +30,7 @@ module core (
   logic        mem_ready;
   memory mem (
     .clk(clk),
+    .rst(rst),
     .req(memory_read.active),
     .addr_in(memory_read.address),
     .data_ready(mem_ready),
