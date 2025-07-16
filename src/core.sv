@@ -37,6 +37,7 @@ module core (
   // Error codes
   localparam logic [15:0] STATE_ERROR = 16'h6666;
   localparam logic [15:0] FETCH_ERROR = 16'hAAAA;
+  localparam logic [15:0] APPY_ERROR  = 16'hBBBB;
 
   //────────────────────────────────────────────────────────────
   // Registers
@@ -151,6 +152,10 @@ module core (
           lisp_defs::TYPE_NUMBER: begin
             val_next = expr;
             state_next = Halt;
+          end
+          default: begin
+            error_next = APPY_ERROR;
+            state_next = Error;
           end
         endcase
       end
