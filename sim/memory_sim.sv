@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 
 `include "../src/lisp_defs.sv"
-import lisp_defs::*;
 
 module memory_sim();
   logic clk = 0;
@@ -40,8 +39,8 @@ module memory_sim();
 
   task clear_memory();
     begin
-      m0.memory[0] = LISP_NIL;
-      for (int i = 1; i < MemorySize; i++) m0.memory[i] = 16'h0000;
+      m0.memory[0] = lisp_defs::LISP_NIL;
+      for (int i = 1; i < m0.MemorySize; i++) m0.memory[i] = 16'h0000;
     end
   endtask
 

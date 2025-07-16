@@ -2,7 +2,6 @@
 `default_nettype none
 
 `include "lisp_defs.sv"
-import lisp_defs::*;
 
 module core (
   input  wire         clk,
@@ -13,6 +12,32 @@ module core (
   output logic [ 3:0] anodes,
   output logic [15:0] leds
 );
+  //────────────────────────────────────────────────────────────
+  // Types
+  //────────────────────────────────────────────────────────────
+  typedef logic [11:0] address_t;
+
+  typedef enum logic [3:0] {
+    SelectExpr,
+    Fetch,
+    MemWait,
+    EvalConst,
+    EvalCar,
+    Apply,
+    Halt,
+    Error
+  } state_t;
+
+  typedef struct packed {
+    logic     active;
+    address_t address;
+    state_t   continue_state;
+  } memory_read_t;
+
+  // Error codes
+  localparam logic [15:0] STATE_ERROR = 16'h6666;
+  localparam logic [15:0] FETCH_ERROR = 16'hAAAA;
+
   //────────────────────────────────────────────────────────────
   // Registers
   //────────────────────────────────────────────────────────────
@@ -86,13 +111,13 @@ module core (
 
       Fetch: begin
         case (expr[14:12])
-          TYPE_NUMBER: begin
+          lisp_defs::TYPE_NUMBER: begin
             memory_read.active = 1'b1;
             memory_read.address = expr[11:0];
             memory_read.continue_state = EvalConst;
             state_next = MemWait;
           end
-          TYPE_CONS: begin
+          lisp_defs::TYPE_CONS: begin
             memory_read.active = 1'b1;
             memory_read.address = expr[11:0];  // car is at base address
             memory_read.continue_state = Apply;
@@ -123,7 +148,7 @@ module core (
         // We came from a cons (a . b), but we need to know if the first
         // symbol is a primitive/function/proc or an atom (number)
         case (mem_data[14:11])
-          TYPE_NUMBER: begin
+          lisp_defs::TYPE_NUMBER: begin
             val_next = expr;
             state_next = Halt;
           end

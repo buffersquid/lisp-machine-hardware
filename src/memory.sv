@@ -2,11 +2,9 @@
 `default_nettype none
 
 `include "lisp_defs.sv"
-import lisp_defs::*;
 
 module memory #(
-  parameter int MemorySize = lisp_defs::MemorySize,
-  parameter int HeapStart = lisp_defs::HeapStart
+  parameter int HeapStart = 5 // Start of heap cells after ROM/NIL/etc
 )(
   input  wire         clk,
   input  wire         rst,
@@ -27,6 +25,9 @@ module memory #(
     ConsWriteCar
   } cons_state_t;
 
+  // Memory layout parameters
+  localparam int MemorySize = 256;
+
   (* ram_style = "block" *)
   logic [15:0] memory[MemorySize];
 
@@ -35,7 +36,7 @@ module memory #(
   cons_state_t cons_state = ConsIdle;
 
   initial begin
-    memory[0] = LISP_NIL;
+    memory[0] = lisp_defs::LISP_NIL;
     memory[1] = 16'hBEEF;
     memory[2] = 16'hDEAD;
     memory[3] = 16'h0001; // CDR pointer to BEEF
@@ -75,7 +76,7 @@ module memory #(
         ConsWriteCar: begin
           memory[heap_ptr] <= cons_car;
           cons_done        <= 1;
-          cons_ptr         <= {1'b0, TYPE_CONS, heap_ptr};
+          cons_ptr         <= {1'b0, lisp_defs::TYPE_CONS, heap_ptr};
           heap_ptr         <= heap_ptr + 1;
           cons_state       <= ConsIdle;
         end

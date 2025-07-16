@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 
 `include "../src/lisp_defs.sv"
-import lisp_defs::*;
 
 module core_sim();
   logic clk = 0;
@@ -28,14 +27,14 @@ module core_sim();
 
   task clear_memory(input logic [15:0] mem[MemorySize]);
     begin
-      mem[0] = LISP_NIL;
-      for (int i = 1; i < MemorySize; i++) mem[i] = 16'h0000;
+      mem[0] = lisp_defs::LISP_NIL;
+      for (int i = 1; i < d0.mem.MemorySize; i++) mem[i] = 16'h0000;
     end
   endtask
 
   // Wait until system finishes execution
   task wait_until_done;
-    while (d0.state !== Halt && d0.state !== Error) begin
+    while (d0.state !== d0.Halt && d0.state !== d0.Error) begin
       @(posedge clk);
     end
   endtask
@@ -74,7 +73,7 @@ module core_sim();
       wait_until_done();
 
       // ───── Validate results ───────────────────
-      if (d0.state == Error) begin
+      if (d0.state == d0.Error) begin
         $fatal(1, "Execution failed: error = %h", d0.error);
       end else if (d0.val !== expected_val) begin
         $fatal(1, "Assertion failed: val = %h (expected %h)", d0.val, expected_val);
@@ -91,7 +90,7 @@ module core_sim();
     clear_memory(mem);
     mem[1] = 16'hDEAD;
     run_expr_via_button(
-      {1'b0, TYPE_NUMBER, 12'h001},
+      {1'b0, lisp_defs::TYPE_NUMBER, 12'h001},
       mem,
       16'hDEAD
     );
@@ -103,9 +102,9 @@ module core_sim();
     mem[3] = 16'h0001; // cdr = 1
     mem[4] = 16'h0002; // car = 2
     run_expr_via_button(
-      {1'b0, TYPE_CONS, 12'h004},
+      {1'b0, lisp_defs::TYPE_CONS, 12'h004},
       mem,
-      {1'b0, TYPE_CONS, 12'h004}
+      {1'b0, lisp_defs::TYPE_CONS, 12'h004}
     );
 
     $display("✅ All tests passed!");
