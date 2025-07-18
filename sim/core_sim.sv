@@ -34,7 +34,7 @@ module core_sim();
 
   // Wait until system finishes execution
   task wait_until_done;
-    while (d0.state !== d0.Halt && d0.state !== d0.Error) begin
+    while (d0.state.current !== d0.Halt && d0.state.current !== d0.Error) begin
       @(posedge clk);
     end
   endtask
@@ -46,6 +46,10 @@ module core_sim();
     input logic [15:0] expected_val
   );
     begin
+      // ───── Set switches to desired expr ───────
+      switches = expr_value;
+      btn_start = 0;
+
       // ───── Reset core and memory ───────────────
       rst = 1;
       @(posedge clk);
@@ -57,12 +61,6 @@ module core_sim();
         d0.mem.memory[i] = mem_values[i];
       end
 
-      // ───── Set switches to desired expr ───────
-      switches = expr_value;
-      btn_start = 0;
-      @(posedge clk);
-      @(posedge clk);
-
       // ───── Pulse button to trigger start ──────
       btn_start = 1;
       @(posedge clk);
@@ -73,12 +71,12 @@ module core_sim();
       wait_until_done();
 
       // ───── Validate results ───────────────────
-      if (d0.state == d0.Error) begin
+      if (d0.state.current == d0.Error) begin
         $fatal(1, "Execution failed: error = %h", d0.error);
-      end else if (d0.val !== expected_val) begin
-        $fatal(1, "Assertion failed: val = %h (expected %h)", d0.val, expected_val);
+      end else if (d0.val.current !== expected_val) begin
+        $fatal(1, "Assertion failed: val = %h (expected %h)", d0.val.current, expected_val);
       end else begin
-        $display("PASS: val = %h", d0.val);
+        $display("PASS: val = %h", d0.val.current);
       end
     end
   endtask
@@ -86,25 +84,16 @@ module core_sim();
   initial begin
     logic [15:0] mem[MemorySize];
 
-    // Test 1: Evaluate number at memory[1] = 0xDEAD
     clear_memory(mem);
-    mem[1] = 16'hDEAD;
+    mem[0] = lisp_defs::LISP_NIL;
+    mem[1] = 16'h0004;
+    mem[2] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    mem[3] = lisp_defs::LISP_NIL;
+    mem[4] = 16'h789A;
     run_expr_via_button(
-      {1'b0, lisp_defs::TYPE_NUMBER, 12'h001},
+      15'h0002,
       mem,
-      16'hDEAD
-    );
-
-    // Test 2: Evaluate (cons DEAD BEEF) pointer at addr 4
-    clear_memory(mem);
-    mem[1] = 16'hBEEF;
-    mem[2] = 16'hDEAD;
-    mem[3] = 16'h0001; // cdr = 1
-    mem[4] = 16'h0002; // car = 2
-    run_expr_via_button(
-      {1'b0, lisp_defs::TYPE_CONS, 12'h004},
-      mem,
-      {1'b0, lisp_defs::TYPE_CONS, 12'h004}
+      16'hDEAD // NOT THE RIGHT VALUE. NEED TO DETERMINE HOW WE WANT MEMORY TO FUNCTION
     );
 
     $display("✅ All tests passed!");
