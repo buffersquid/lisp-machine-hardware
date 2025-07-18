@@ -78,9 +78,7 @@ module core (
   //────────────────────────────────────────────────────────────
   state_t state = SelectExpr;
   state_t state_next, after_read;
-
-  logic [15:0] user_expr;
-  logic        go_pressed, go_prev;
+  logic go_pressed, go_prev;
 
   memory_read_t memory_read;
   always_comb begin
@@ -94,7 +92,6 @@ module core (
     val_next = val;
     error_next = error;
 
-    user_expr = switches;
     leds = 16'b0000;
 
     case (state)
