@@ -10,38 +10,25 @@ module memory #(
   input  wire         rst,
   // ─── Read Interface ──────────────────────────────────────────────
   input  wire         req,
-  input  wire  [11:0] addr_in,
+  input  wire  [15:0] addr_in,
   output logic        data_ready,
-  output logic [15:0] data_out,
-  // ─── Write Cons Interface ─────────────────────────────────────────────
-  input  wire         cons_en,
-  input  wire [15:0]  cons_car,
-  input  wire [15:0]  cons_cdr,
-  output logic        cons_done,
-  output logic [15:0] cons_ptr
+  output logic [15:0] data_out
 );
-  typedef enum logic [1:0] {
-    ConsIdle,
-    ConsWriteCar
-  } cons_state_t;
-
   // Memory layout parameters
   localparam int MemorySize = 256;
 
   (* ram_style = "block" *)
   logic [15:0] memory[MemorySize];
 
-  logic [11:0] heap_ptr = HeapStart;
-
-  cons_state_t cons_state = ConsIdle;
-
   initial begin
     memory[0] = lisp_defs::LISP_NIL;
-    memory[1] = 16'hBEEF;
-    memory[2] = 16'hDEAD;
-    memory[3] = 16'h0001; // CDR pointer to BEEF
-    memory[4] = 16'h0002; // CAR pointer to DEAD
-    // expr = 15'h1004 // Cons pointer to cons data
+    // memory dump for integer 0x789A
+    // header -> data_0 -> Nil (marks the end of the number)
+    // expr = 15'h0002;
+    memory[1] = 16'h0004;
+    memory[2] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    memory[3] = lisp_defs::LISP_NIL;
+    memory[4] = 16'h789A;
   end
 
   always_ff @(posedge clk) begin
@@ -49,11 +36,6 @@ module memory #(
       // Reset all stateful signals
       data_ready <= 0;
       data_out   <= 0;
-
-      cons_done  <= 0;
-      cons_ptr   <= 0;
-      cons_state <= ConsIdle;
-      heap_ptr   <= HeapStart;
     end else begin
       // --- Read FSM ---
       if (req) begin
@@ -62,27 +44,6 @@ module memory #(
       end else begin
         data_ready <= 1'b0;
       end
-
-      // --- Cons Write FSM ---
-      cons_done <= 0; // default to 0 every cycle
-      case (cons_state)
-        ConsIdle: begin
-          if (cons_en) begin
-            memory[heap_ptr] <= cons_cdr;
-            heap_ptr         <= heap_ptr + 1;
-            cons_state       <= ConsWriteCar;
-          end
-        end
-        ConsWriteCar: begin
-          memory[heap_ptr] <= cons_car;
-          cons_done        <= 1;
-          cons_ptr         <= {1'b0, lisp_defs::TYPE_CONS, heap_ptr};
-          heap_ptr         <= heap_ptr + 1;
-          cons_state       <= ConsIdle;
-        end
-      endcase
     end
   end
-
-
 endmodule

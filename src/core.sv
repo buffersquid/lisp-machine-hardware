@@ -15,24 +15,16 @@ module core (
   //────────────────────────────────────────────────────────────
   // Types
   //────────────────────────────────────────────────────────────
-  typedef logic [11:0] address_t;
+  typedef logic [15:0] address_t;
 
-  typedef enum logic [3:0] {
+  typedef enum {
     SelectExpr,
     Fetch,
-    MemWait,
-    EvalConst,
-    EvalCar,
+    Eval,
     Apply,
     Halt,
     Error
   } state_t;
-
-  typedef struct packed {
-    logic     active;
-    address_t address;
-    state_t   continue_state;
-  } memory_read_t;
 
   // Error codes
   localparam logic [15:0] STATE_ERROR = 16'h6666;
@@ -42,23 +34,24 @@ module core (
   //────────────────────────────────────────────────────────────
   // Registers
   //────────────────────────────────────────────────────────────
-  logic [15:0] expr = 16'h0000;
-  logic [15:0] expr_next;
-  logic [15:0] val = 16'h0000;
-  logic [15:0] val_next;
-  logic [15:0] error = 16'h0000;
-  logic [15:0] error_next;
+  typedef struct {
+    logic [15:0] current;
+    logic [15:0] next;
+  } reg_t;
+  reg_t expr, val, error;
 
   //────────────────────────────────────────────────────────────
   // Memory
   //────────────────────────────────────────────────────────────
+  logic        mem_req;
+  address_t    mem_addr;
   logic [15:0] mem_data;
   logic        mem_ready;
   memory mem (
     .clk(clk),
     .rst(rst),
-    .req(memory_read.active),
-    .addr_in(memory_read.address),
+    .req(mem_req),
+    .addr_in(mem_addr),
     .data_ready(mem_ready),
     .data_out(mem_data)
   );
@@ -68,7 +61,7 @@ module core (
   //────────────────────────────────────────────────────────────
   seven_segment ssg (
     .clk(clk),
-    .hex(val),
+    .hex(val.current),
     .cathodes(cathodes),
     .anodes(anodes)
   );
@@ -76,89 +69,51 @@ module core (
   //────────────────────────────────────────────────────────────
   // Combinational FSM Logic
   //────────────────────────────────────────────────────────────
-  state_t state = SelectExpr;
-  state_t state_next, after_read;
+  struct {
+    state_t current = SelectExpr;
+    state_t next;
+  } state;
+
   logic go_pressed, go_prev;
 
-  memory_read_t memory_read;
   always_comb begin
-    // Default memory request (inactive)
-    memory_read.active = 1'b0;
-    memory_read.address = '0;
-    memory_read.continue_state = state;
-
-    state_next = state; // default, stay in the same state
-    expr_next = expr;
-    val_next = val;
-    error_next = error;
+    state.next = state.current;
+    expr.next  = expr.current;
+    val.next   = val.current;
+    error.next = error.current;
 
     leds = 16'b0000;
 
-    case (state)
+    case (state.current)
 
       SelectExpr: begin
-        val_next = switches;
+        val.next = switches;
         if (go_pressed) begin
-          val_next = 16'h0000;
-          expr_next = switches;
-          state_next = Fetch;
+          val.next = lisp_defs::LISP_NIL;
+          expr.next = switches;
+          state.next = Fetch;
         end else begin
-          state_next = SelectExpr;
+          state.next = SelectExpr;
         end
       end
 
+      // Retrieves the next expression from memory
       Fetch: begin
-        case (expr[14:12])
-          lisp_defs::TYPE_NUMBER: begin
-            memory_read.active = 1'b1;
-            memory_read.address = expr[11:0];
-            memory_read.continue_state = EvalConst;
-            state_next = MemWait;
-          end
-          lisp_defs::TYPE_CONS: begin
-            memory_read.active = 1'b1;
-            memory_read.address = expr[11:0];  // car is at base address
-            memory_read.continue_state = Apply;
-            state_next = MemWait;
-          end
-          default: begin
-            error_next = FETCH_ERROR;
-            state_next = Error;
-          end
-        endcase
+        val.next = expr.current;
+        state.next = Halt;
       end
 
-      MemWait: begin
-        if (mem_ready) state_next = after_read;
+      // Determines what kind of thing the expr is, and what to do with it
+      Eval: begin
       end
 
-      EvalConst: begin
-        val_next = mem_data;
-        state_next = Halt;
-      end
-
-      EvalCar: begin
-        expr_next = mem_data;
-        state_next = Fetch;
-      end
-
+      // Takes a function and a list of evaluated args and applies the
+      // function to those arguments
       Apply: begin
-        // We came from a cons (a . b), but we need to know if the first
-        // symbol is a primitive/function/proc or an atom (number)
-        case (mem_data[14:11])
-          lisp_defs::TYPE_NUMBER: begin
-            val_next = expr;
-            state_next = Halt;
-          end
-          default: begin
-            error_next = APPY_ERROR;
-            state_next = Error;
-          end
-        endcase
       end
 
       Halt: leds = {{15{1'b0}}, 1'b1};
-      Error: leds = error;
+      Error: leds = error.current;
       default: leds = STATE_ERROR;
     endcase
   end
@@ -168,19 +123,18 @@ module core (
   //────────────────────────────────────────────────────────────
   always_ff @(posedge clk) begin
     if (rst) begin
-      state      <= SelectExpr;
-      after_read <= SelectExpr;
-      expr       <= 16'h0000;
-      val        <= 16'h0000;
-      error      <= 16'h0000;
+      state.current <= SelectExpr;
+      expr.current  <= lisp_defs::LISP_NIL;
+      expr.next     <= lisp_defs::LISP_NIL;
+      val.current   <= lisp_defs::LISP_NIL;
+      val.next      <= lisp_defs::LISP_NIL;
+      error.current <= lisp_defs::LISP_NIL;
+      error.next    <= lisp_defs::LISP_NIL;
     end else begin
-      if (memory_read.active) begin
-        after_read <= memory_read.continue_state;
-      end
-      state <= state_next;
-      expr  <= expr_next;
-      val   <= val_next;
-      error <= error_next;
+      state.current <= state.next;
+      expr.current  <= expr.next;
+      val.current   <= val.next;
+      error.current <= error.next;
     end
   end
 

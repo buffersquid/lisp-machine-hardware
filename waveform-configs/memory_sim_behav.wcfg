@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="memory_sim_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="lisp_defs" />
+            <top_module name="memory_sim" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0.000 ns"></ZoomStartTime>
+      <ZoomEndTime time="683.734 ns"></ZoomEndTime>
+      <Cursor1Time time="30.000 ns"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="178"></NameColumnWidth>
+      <ValueColumnWidth column_width="98"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="7" />
+   <wvobject type="logic" fp_name="/memory_sim/m0/clk">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/memory_sim/m0/rst">
+      <obj_property name="ElementShortName">rst</obj_property>
+      <obj_property name="ObjectShortName">rst</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/memory_sim/m0/req">
+      <obj_property name="ElementShortName">req</obj_property>
+      <obj_property name="ObjectShortName">req</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/memory_sim/m0/addr_in">
+      <obj_property name="ElementShortName">addr_in[15:0]</obj_property>
+      <obj_property name="ObjectShortName">addr_in[15:0]</obj_property>
+   </wvobject>
+   <wvobject type="logic" fp_name="/memory_sim/m0/data_ready">
+      <obj_property name="ElementShortName">data_ready</obj_property>
+      <obj_property name="ObjectShortName">data_ready</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/memory_sim/m0/data_out">
+      <obj_property name="ElementShortName">data_out[15:0]</obj_property>
+      <obj_property name="ObjectShortName">data_out[15:0]</obj_property>
+   </wvobject>
+   <wvobject type="array" fp_name="/memory_sim/m0/memory">
+      <obj_property name="ElementShortName">memory[0:255][15:0]</obj_property>
+      <obj_property name="ObjectShortName">memory[0:255][15:0]</obj_property>
+   </wvobject>
+</wave_config>
