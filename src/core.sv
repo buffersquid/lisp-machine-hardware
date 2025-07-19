@@ -59,9 +59,11 @@ module core (
   //────────────────────────────────────────────────────────────
   // Seven-segment display
   //────────────────────────────────────────────────────────────
+  logic [15:0] display_value;
+  assign display_value = (state.current == SelectExpr) ? switches : val.current;
   seven_segment ssg (
     .clk(clk),
-    .hex(val.current),
+    .hex(display_value),
     .cathodes(cathodes),
     .anodes(anodes)
   );
@@ -87,9 +89,7 @@ module core (
     case (state.current)
 
       SelectExpr: begin
-        val.next = switches;
         if (go_pressed) begin
-          val.next = lisp_defs::LISP_NIL;
           expr.next = switches;
           state.next = Fetch;
         end else begin
