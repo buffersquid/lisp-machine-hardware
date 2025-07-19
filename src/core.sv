@@ -19,7 +19,10 @@ module core (
 
   typedef enum {
     SelectExpr,
-    Fetch,
+    FetchHeader,
+    FetchCar,
+    FetchCdr,
+    MemWait,
     Eval,
     Apply,
     Halt,
@@ -29,7 +32,8 @@ module core (
   // Error codes
   localparam logic [15:0] STATE_ERROR = 16'h6666;
   localparam logic [15:0] FETCH_ERROR = 16'hAAAA;
-  localparam logic [15:0] APPY_ERROR  = 16'hBBBB;
+  localparam logic [15:0] EVAL_ERROR  = 16'hBBBB;
+  localparam logic [15:0] APPY_ERROR  = 16'hCCCC;
 
   //────────────────────────────────────────────────────────────
   // Registers
@@ -39,21 +43,28 @@ module core (
     logic [15:0] next;
   } reg_t;
   reg_t expr, val, error;
+  // The following registers aren't defined in LTUO, but I figure we can add
+  // them for clarity now, and remove them later if they are redundant.
+  reg_t header, car;
 
   //────────────────────────────────────────────────────────────
   // Memory
   //────────────────────────────────────────────────────────────
-  logic        mem_req;
-  address_t    mem_addr;
-  logic [15:0] mem_data;
-  logic        mem_ready;
+  struct packed {
+    logic active;
+    address_t addr;
+    logic [15:0] data_out;
+    logic mem_ready;
+    state_t continue_state;
+  } memory_read;
+
   memory mem (
     .clk(clk),
     .rst(rst),
-    .req(mem_req),
-    .addr_in(mem_addr),
-    .data_ready(mem_ready),
-    .data_out(mem_data)
+    .req(memory_read.active),
+    .addr_in(memory_read.addr),
+    .data_ready(memory_read.mem_ready),
+    .data_out(memory_read.data_out)
   );
 
   //────────────────────────────────────────────────────────────
@@ -73,7 +84,7 @@ module core (
   //────────────────────────────────────────────────────────────
   struct packed {
     state_t current;
-    state_t next;
+    state_t next, after_read;
   } state;
 
   logic go_pressed, go_prev;
@@ -84,27 +95,70 @@ module core (
     val.next   = val.current;
     error.next = error.current;
 
+    car.next = car.current;
+    header.next = header.current;
+
     leds = 16'b0000;
+
+    memory_read.active = 1'b0;
+    memory_read.addr   = 16'h0;
+    memory_read.continue_state = state.current;
 
     case (state.current)
 
       SelectExpr: begin
         if (go_pressed) begin
           expr.next = switches;
-          state.next = Fetch;
+          state.next = FetchHeader;
         end else begin
           state.next = SelectExpr;
         end
       end
 
+      MemWait: begin
+        if (memory_read.mem_ready) state.next = state.after_read;
+      end
+
+      FetchHeader: begin
+        memory_read.active         = 1'b1;
+        memory_read.addr           = expr.current;
+        memory_read.continue_state = FetchCar;
+        state.next = MemWait;
+      end
+
       // Retrieves the next expression from memory
-      Fetch: begin
-        val.next = expr.current;
-        state.next = Halt;
+      FetchCar: begin
+        header.next = memory_read.data_out;
+        memory_read.active         = 1'b1;
+        memory_read.addr           = expr.current - 1;
+        memory_read.continue_state = FetchCdr;
+        state.next = MemWait;
+      end
+
+      FetchCdr: begin
+        car.next = memory_read.data_out;
+        memory_read.active         = 1'b1;
+        memory_read.addr           = expr.current - 2;
+        memory_read.continue_state = Eval;
+        state.next = MemWait;
       end
 
       // Determines what kind of thing the expr is, and what to do with it
       Eval: begin
+        case (header.current[14:0])
+          lisp_defs::TYPE_NUMBER: begin
+            // This evaluation is jank. What we really need to do is start
+            // dealing with CLINK variables. However, since I just want to get
+            // numbers to work for now, we are going to do this simple
+            // version.
+            val.next = car.current;
+            state.next = Halt;
+          end
+        default: begin
+          error.next = EVAL_ERROR;
+          state.next = Error;
+        end
+        endcase
       end
 
       // Takes a function and a list of evaluated args and applies the
@@ -123,15 +177,26 @@ module core (
   //────────────────────────────────────────────────────────────
   always_ff @(posedge clk) begin
     if (rst) begin
-      state.current <= SelectExpr;
+      state.current    <= SelectExpr;
+      state.after_read <= SelectExpr;
       expr.current  <= lisp_defs::LISP_NIL;
       val.current   <= lisp_defs::LISP_NIL;
       error.current <= lisp_defs::LISP_NIL;
+
+      car.current <= lisp_defs::LISP_NIL;
+      header.current <= lisp_defs::LISP_NIL;
     end else begin
       state.current <= state.next;
       expr.current  <= expr.next;
       val.current   <= val.next;
       error.current <= error.next;
+
+      if (memory_read.active) begin
+        state.after_read <= memory_read.continue_state;
+      end
+
+      car.current <= car.next;
+      header.current <= header.next;
     end
   end
 

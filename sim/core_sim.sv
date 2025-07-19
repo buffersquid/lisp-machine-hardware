@@ -37,6 +37,10 @@ module core_sim();
     while (d0.state.current !== d0.Halt && d0.state.current !== d0.Error) begin
       @(posedge clk);
     end
+    // Three more cycles to let everything settle down
+    for (int i = 0; i < 3; i++) begin
+      @(posedge clk);
+    end
   endtask
 
   // Main test function
@@ -86,14 +90,13 @@ module core_sim();
 
     clear_memory(mem);
     mem[0] = lisp_defs::LISP_NIL;
-    mem[1] = 16'h0004;
-    mem[2] = { 1'b0, lisp_defs::TYPE_NUMBER };
-    mem[3] = lisp_defs::LISP_NIL;
-    mem[4] = 16'h789A;
+    mem[1] = lisp_defs::LISP_NIL;
+    mem[2] = 16'hDEAD;
+    mem[3] = { 1'b0, lisp_defs::TYPE_NUMBER };
     run_expr_via_button(
-      15'h0002,
+      15'h0003,
       mem,
-      16'hDEAD // NOT THE RIGHT VALUE. NEED TO DETERMINE HOW WE WANT MEMORY TO FUNCTION
+      16'hDEAD 
     );
 
     $display("✅ All tests passed!");

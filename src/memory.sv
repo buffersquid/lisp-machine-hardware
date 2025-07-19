@@ -22,13 +22,12 @@ module memory #(
 
   initial begin
     memory[0] = lisp_defs::LISP_NIL;
+    memory[1] = lisp_defs::LISP_NIL;
+    memory[2] = 16'h789A;
+    memory[3] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // memory dump for integer 0x789A
-    // header -> data_0 -> Nil (marks the end of the number)
-    // expr = 15'h0002;
-    memory[1] = 16'h0004;
-    memory[2] = { 1'b0, lisp_defs::TYPE_NUMBER };
-    memory[3] = lisp_defs::LISP_NIL;
-    memory[4] = 16'h789A;
+    // [ header, data_0, ptr (nil) ]
+    // expr = 15'h0003;
   end
 
   always_ff @(posedge clk) begin
