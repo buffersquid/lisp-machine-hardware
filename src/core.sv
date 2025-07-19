@@ -34,7 +34,7 @@ module core (
   //────────────────────────────────────────────────────────────
   // Registers
   //────────────────────────────────────────────────────────────
-  typedef struct {
+  typedef struct packed {
     logic [15:0] current;
     logic [15:0] next;
   } reg_t;
@@ -71,8 +71,8 @@ module core (
   //────────────────────────────────────────────────────────────
   // Combinational FSM Logic
   //────────────────────────────────────────────────────────────
-  struct {
-    state_t current = SelectExpr;
+  struct packed {
+    state_t current;
     state_t next;
   } state;
 
@@ -125,11 +125,8 @@ module core (
     if (rst) begin
       state.current <= SelectExpr;
       expr.current  <= lisp_defs::LISP_NIL;
-      expr.next     <= lisp_defs::LISP_NIL;
       val.current   <= lisp_defs::LISP_NIL;
-      val.next      <= lisp_defs::LISP_NIL;
       error.current <= lisp_defs::LISP_NIL;
-      error.next    <= lisp_defs::LISP_NIL;
     end else begin
       state.current <= state.next;
       expr.current  <= expr.next;
