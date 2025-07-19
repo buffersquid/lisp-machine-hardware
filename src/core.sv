@@ -75,6 +75,7 @@ module core (
   seven_segment ssg (
     .clk(clk),
     .hex(display_value),
+    .error(state.current == Error),
     .cathodes(cathodes),
     .anodes(anodes)
   );

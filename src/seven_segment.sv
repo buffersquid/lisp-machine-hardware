@@ -4,6 +4,7 @@
 module seven_segment (
   input  wire         clk,       // 100 MHz system clock
   input  wire  [15:0] hex,       // four 4‑bit digits
+  input  wire         error,
   output logic [ 7:0] cathodes,
   output logic [ 3:0] anodes
 );
@@ -23,6 +24,11 @@ module seven_segment (
     8'hCC, 8'hA4, 8'hA0, 8'h8F,
     8'h80, 8'h8C, 8'h88, 8'hE0,
     8'hB1, 8'hC2, 8'hB0, 8'hB8
+  };
+
+  localparam logic [7:0] Error [0:3] = '{
+    // Spells Err
+    8'hFF, 8'hFA, 8'hFA, 8'hB0
   };
 
   // which anode to drive active (low)
@@ -60,7 +66,7 @@ module seven_segment (
 
       // update anodes and cathodes from lookup tables
       anodes   <= AnodeLookup[current_digit];
-      cathodes <= SegmentLookup[hex[4*current_digit +: 4]];
+      cathodes <= error ? Error[current_digit] : SegmentLookup[hex[4*current_digit +: 4]];
     end
   end
 
