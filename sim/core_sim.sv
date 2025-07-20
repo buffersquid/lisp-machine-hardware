@@ -76,7 +76,7 @@ module core_sim();
 
       // ───── Validate results ───────────────────
       if (d0.state.current == d0.Error) begin
-        $fatal(1, "Execution failed: error = %h", d0.error);
+        $fatal(1, "Execution failed: error = %h", d0.error_code_reg);
       end else if (d0.val.current !== expected_val) begin
         $fatal(1, "Assertion failed: val = %h (expected %h)", d0.val.current, expected_val);
       end else begin

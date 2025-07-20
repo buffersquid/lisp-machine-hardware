@@ -28,10 +28,12 @@ module core (
   } state_t;
 
   // Error codes
-  localparam logic [15:0] STATE_ERROR = 16'h6666;
-  localparam logic [15:0] FETCH_ERROR = 16'hAAAA;
-  localparam logic [15:0] EVAL_ERROR  = 16'hBBBB;
-  localparam logic [15:0] APPY_ERROR  = 16'hCCCC;
+  localparam logic [ 3:0] STATE_ERROR = 4'h0;
+  localparam logic [ 3:0] FETCH_ERROR = 4'h1;
+  localparam logic [ 3:0] EVAL_ERROR  = 4'h2;
+  localparam logic [ 3:0] APPLY_ERROR = 4'h3;
+  localparam logic [15:0] LED_ERROR   = 16'hFFFF;
+  localparam logic [15:0] LED_HALT    = 16'h0001;
 
   //────────────────────────────────────────────────────────────
   // Registers
@@ -40,7 +42,7 @@ module core (
     logic [15:0] current;
     logic [15:0] next;
   } reg_t;
-  reg_t expr, val, error;
+  reg_t expr, val;
 
   //────────────────────────────────────────────────────────────
   // Memory
@@ -71,12 +73,15 @@ module core (
   //────────────────────────────────────────────────────────────
   // Seven-segment display
   //────────────────────────────────────────────────────────────
+  logic [3:0]  error_code;
+  logic [3:0]  error_code_reg;
   logic [15:0] display_value;
   assign display_value = (state.current == SelectExpr) ? switches : val.current;
   seven_segment ssg (
     .clk(clk),
     .hex(display_value),
     .error(state.current == Error),
+    .error_code(error_code_reg),
     .cathodes(cathodes),
     .anodes(anodes)
   );
@@ -91,13 +96,19 @@ module core (
 
   logic go_pressed, go_prev;
 
+  logic entering_error_state;
+  assign entering_error_state = (state.current != Error) && (state.next == Error);
+
+
   always_comb begin
     state.next = state.current;
     expr.next  = expr.current;
     val.next   = val.current;
-    error.next = error.current;
 
     leds = 16'b0000;
+    // Tehnically, this is a STATE ERROR, but it doesn't really matter if we
+    // don't get into the error state.
+    error_code = 4'h0;
 
     memory_read.active = 1'b0;
     memory_read.addr   = 0;
@@ -137,7 +148,7 @@ module core (
             state.next = Halt;
           end
         default: begin
-          error.next = EVAL_ERROR;
+          error_code = EVAL_ERROR;
           state.next = Error;
         end
         endcase
@@ -148,9 +159,17 @@ module core (
       Apply: begin
       end
 
-      Halt: leds = {{15{1'b0}}, 1'b1};
-      Error: leds = error.current;
-      default: leds = STATE_ERROR;
+      Halt: leds = LED_HALT;
+
+      Error: begin
+        leds = LED_ERROR;
+        state.next = Error;
+      end
+
+      default: begin
+        error_code = STATE_ERROR;
+        state.next = Error;
+      end
     endcase
   end
 
@@ -161,14 +180,17 @@ module core (
     if (rst) begin
       state.current    <= SelectExpr;
       state.after_read <= SelectExpr;
-      expr.current  <= lisp_defs::LISP_NIL;
-      val.current   <= lisp_defs::LISP_NIL;
-      error.current <= lisp_defs::LISP_NIL;
+      expr.current     <= lisp_defs::LISP_NIL;
+      val.current      <= lisp_defs::LISP_NIL;
+      error_code_reg   <= 4'h0;
     end else begin
       state.current <= state.next;
       expr.current  <= expr.next;
       val.current   <= val.next;
-      error.current <= error.next;
+
+      if (entering_error_state) begin
+        error_code_reg <= error_code; //Latch the error
+      end
 
       if (memory_read.active) begin
         memory_addr_latched <= memory_read.addr;
