@@ -56,7 +56,8 @@ module core_sim();
 
       // ───── Reset core and memory ───────────────
       rst = 1;
-      @(posedge clk);
+      for (int i = 0; i < 3; i++) @(posedge clk);
+      // @(posedge clk);
       rst = 0;
       @(posedge clk);
 
@@ -85,19 +86,103 @@ module core_sim();
     end
   endtask
 
-  initial begin
+  task test_eval_number();
     logic [15:0] mem[MemorySize];
-
     clear_memory(mem);
     mem[0] = lisp_defs::LISP_NIL;
     mem[1] = lisp_defs::LISP_NIL;
     mem[2] = 16'hDEAD;
     mem[3] = { 1'b0, lisp_defs::TYPE_NUMBER };
-    run_expr_via_button(
-      15'h0003,
-      mem,
-      16'hDEAD 
-    );
+
+    run_expr_via_button(15'h0003, mem, 16'hDEAD);
+  endtask
+
+  task test_primitive_add();
+    logic [15:0] mem[MemorySize];
+    clear_memory(mem);
+
+    mem['h0] = lisp_defs::LISP_NIL;
+    // first number
+    mem['h1] = lisp_defs::LISP_NIL;
+    mem['h2] = 16'h0005;
+    mem['h3] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // second number
+    mem['h4] = lisp_defs::LISP_NIL;
+    mem['h5] = 16'h0003;
+    mem['h6] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // (3 nil)
+    mem['h7] = lisp_defs::LISP_NIL;
+    mem['h8] = 16'h0006;
+    mem['h9] = { 1'b0, lisp_defs::TYPE_CONS };
+    // (5 (3 nil))
+    mem['hA] = 16'h0009;
+    mem['hB] = 16'h0003;
+    mem['hC] = { 1'b0, lisp_defs::TYPE_CONS };
+    // (+ (5 (3 nil)))
+    mem['hD] = 16'h000C;
+    mem['hE] = 16'h0012;
+    mem['hF] = { 1'b0, lisp_defs::TYPE_CONS };
+    // primitive +
+    mem['h10] = lisp_defs::LISP_NIL;
+    mem['h11] = lisp_defs::PRIMOP_ADD;
+    mem['h12] = { 1'b0, lisp_defs::TYPE_PRIMITIVE };
+
+    run_expr_via_button(15'h000F, mem, 16'h0008);
+  endtask
+
+  task test_primitive_add_many_args();
+    logic [15:0] mem[MemorySize];
+    clear_memory(mem);
+
+    mem['h0] = lisp_defs::LISP_NIL;
+    // first number
+    mem['h1] = lisp_defs::LISP_NIL;
+    mem['h2] = 16'h0005;
+    mem['h3] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // second number
+    mem['h4] = lisp_defs::LISP_NIL;
+    mem['h5] = 16'h0003;
+    mem['h6] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // third number
+    mem['h7] = lisp_defs::LISP_NIL;
+    mem['h8] = 16'h0002;
+    mem['h9] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // fourth number
+    mem['hA] = lisp_defs::LISP_NIL;
+    mem['hB] = 16'h0001;
+    mem['hC] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // primitive +
+    mem['hD] = lisp_defs::LISP_NIL;
+    mem['hE] = lisp_defs::PRIMOP_ADD;
+    mem['hF] = { 1'b0, lisp_defs::TYPE_PRIMITIVE };
+    //(5 nil)
+    mem['h10] = lisp_defs::LISP_NIL;
+    mem['h11] = 16'h0003;
+    mem['h12] = { 1'b0, lisp_defs::TYPE_CONS };
+    //(3 (5 nil))
+    mem['h13] = 12'h0012;
+    mem['h14] = 16'h0006;
+    mem['h15] = { 1'b0, lisp_defs::TYPE_CONS };
+    //( 2 (3 (5 nil)))
+    mem['h16] = 12'h0015;
+    mem['h17] = 16'h0009;
+    mem['h18] = { 1'b0, lisp_defs::TYPE_CONS };
+    //(1 ( 2 (3 (5 nil))))
+    mem['h19] = 12'h0018;
+    mem['h1A] = 16'h000C;
+    mem['h1B] = { 1'b0, lisp_defs::TYPE_CONS };
+    //(+ (1 ( 2 (3 (5 nil)))))
+    mem['h1C] = 12'h001B;
+    mem['h1D] = 16'h000F;
+    mem['h1E] = { 1'b0, lisp_defs::TYPE_CONS };
+
+    run_expr_via_button(15'h001E, mem, 16'h000B);
+  endtask
+
+  initial begin
+    test_eval_number();
+    test_primitive_add();
+    test_primitive_add_many_args();
 
     $display("✅ All tests passed!");
     $finish;

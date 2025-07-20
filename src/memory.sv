@@ -59,8 +59,8 @@ module memory #(
     memory['hB] = 16'h0003;
     memory['hC] = { 1'b0, lisp_defs::TYPE_CONS };
     // (+ (5 (3 nil)))
-    memory['hD] = 16'h000C; // 12
-    memory['hE] = 16'h0012; // 18
+    memory['hD] = 16'h000C;
+    memory['hE] = 16'h0012;
     memory['hF] = { 1'b0, lisp_defs::TYPE_CONS };
     // Addition
     memory['h10] = lisp_defs::LISP_NIL;

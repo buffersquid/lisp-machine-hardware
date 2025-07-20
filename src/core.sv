@@ -22,7 +22,9 @@ module core (
     Fetch,
     MemWait,
     Eval,
+    EvalArgs,
     Apply,
+    ApplyArgs,
     Halt,
     Error
   } state_t;
@@ -34,6 +36,31 @@ module core (
   localparam logic [ 3:0] APPLY_ERROR = 4'h3;
   localparam logic [15:0] LED_ERROR   = 16'hFFFF;
   localparam logic [15:0] LED_HALT    = 16'h0001;
+  logic [3:0]  error_code, error_code_reg;
+
+  //────────────────────────────────────────────────────────────
+  // Functions & Tasks
+  //────────────────────────────────────────────────────────────
+  task automatic read_mem(
+    input address_t addr,
+    input state_t next_state
+  );
+    begin
+      memory_read.active         = 1'b1;
+      memory_read.addr           = addr;
+      memory_read.continue_state = next_state;
+      state.next = MemWait;
+    end
+  endtask
+
+  task automatic send_error(
+    input logic [3:0] error
+  );
+  begin
+    error_code = error;
+    state.next = Error;
+  end
+  endtask
 
   //────────────────────────────────────────────────────────────
   // Registers
@@ -42,7 +69,7 @@ module core (
     logic [15:0] current;
     logic [15:0] next;
   } reg_t;
-  reg_t expr, val;
+  reg_t expr, val, args;
 
   //────────────────────────────────────────────────────────────
   // Memory
@@ -73,8 +100,6 @@ module core (
   //────────────────────────────────────────────────────────────
   // Seven-segment display
   //────────────────────────────────────────────────────────────
-  logic [3:0]  error_code;
-  logic [3:0]  error_code_reg;
   logic [15:0] display_value;
   assign display_value = (state.current == SelectExpr) ? switches : val.current;
   seven_segment ssg (
@@ -104,6 +129,7 @@ module core (
     state.next = state.current;
     expr.next  = expr.current;
     val.next   = val.current;
+    args.next  = args.current;
 
     leds = 16'b0000;
     // Tehnically, this is a STATE ERROR, but it doesn't really matter if we
@@ -129,12 +155,7 @@ module core (
         if (memory_read.mem_ready) state.next = state.after_read;
       end
 
-      Fetch: begin
-        memory_read.active         = 1'b1;
-        memory_read.addr           = expr.current;
-        memory_read.continue_state = Eval;
-        state.next = MemWait;
-      end
+      Fetch: read_mem(expr.current, Eval);
 
       // Determines what kind of thing the expr is, and what to do with it
       Eval: begin
@@ -147,16 +168,72 @@ module core (
             val.next = mem_car;
             state.next = Halt;
           end
-        default: begin
-          error_code = EVAL_ERROR;
-          state.next = Error;
-        end
+
+          lisp_defs::TYPE_CONS: begin
+            // It's a TYPE_CONS, so it's a procedure of some sort
+            // Need to find the operator and save the arguments
+            args.next = mem_cdr;
+            val.next  = 0;
+            read_mem(mem_car, Apply);
+          end
+        default: send_error(EVAL_ERROR);
+        endcase
+      end
+
+      // Determines what kind of thing the memory response is, and what to do
+      // with it. Differs from Eval, in that we don't set val = 0. Supposed to
+      // be for evaluating arguments of some root operator. However, I'm not
+      // 100% sold on this as it seems like we may be able to reuse other
+      // functionality instead of having new states.
+      //
+      // WARNING: We have no checking going on for this. So it can literally
+      // only evaluate (+ number number number number ...). Any other input
+      // will bork the system.
+      EvalArgs: begin
+        case (mem_header)
+          lisp_defs::TYPE_CONS: begin
+            args.next = mem_cdr;
+            read_mem(mem_car, ApplyArgs);
+          end
         endcase
       end
 
       // Takes a function and a list of evaluated args and applies the
       // function to those arguments
       Apply: begin
+        case (mem_header)
+          lisp_defs::TYPE_PRIMITIVE: begin
+            // Save the primop code in expression for now. Will probably need
+            // to change once we get recursive evaluation going.
+            expr.next = mem_car;
+            read_mem(args.current, EvalArgs);
+          end
+          default: send_error(APPLY_ERROR);
+        endcase
+      end
+
+      // Using the latched top-level function, determine what to do with the
+      // data. For example, if the top-level funciton is an add, then we want
+      // to add val (which is acting as an accumulator) and the car of the
+      // memory response (which we are assuming to be a number, and thus the
+      // car holds the data).
+      //
+      // Once we do the prodecure, then we go back to EvalArgs, but this time
+      // with the next argument in the list, which is set in EvalArgs.
+      //
+      // Finally, when we see that the arg is nil, we know we have reached the
+      // end of the list, and go to halt.
+      ApplyArgs: begin
+        case (expr.current)
+          lisp_defs::PRIMOP_ADD: begin
+            val.next = val.current + mem_car;
+            if (args.current == lisp_defs::LISP_NIL) begin
+              state.next = Halt;
+            end else begin
+              read_mem(args.current, EvalArgs);
+            end
+          end
+        endcase
       end
 
       Halt: leds = LED_HALT;
@@ -166,10 +243,7 @@ module core (
         state.next = Error;
       end
 
-      default: begin
-        error_code = STATE_ERROR;
-        state.next = Error;
-      end
+      default: send_error(STATE_ERROR);
     endcase
   end
 
@@ -182,11 +256,13 @@ module core (
       state.after_read <= SelectExpr;
       expr.current     <= lisp_defs::LISP_NIL;
       val.current      <= lisp_defs::LISP_NIL;
+      args.current      <= lisp_defs::LISP_NIL;
       error_code_reg   <= 4'h0;
     end else begin
       state.current <= state.next;
       expr.current  <= expr.next;
       val.current   <= val.next;
+      args.current   <= args.next;
 
       if (entering_error_state) begin
         error_code_reg <= error_code; //Latch the error
