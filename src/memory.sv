@@ -9,28 +9,32 @@ module memory #(
   input  wire         clk,
   input  wire         rst,
   // ─── Read Interface ──────────────────────────────────────────────
-  input  wire         req,
+  input  wire         read_enable,
   input  wire  [15:0] addr_in,
-  output logic        data_ready,
-  output logic [15:0] data_out,
+  output logic [14:0] header_out,
+  output logic [15:0] car_out, cdr_out,
   // ─── Write Interface ─────────────────────────────────────────────
   input  wire         write_enable,
   input  wire  [14:0] data_type,
-  input  wire  [15:0] car_data,
-  input  wire  [15:0] cdr_data,
-  output logic        write_done,
-  output logic [15:0] ptr
+  input  wire  [15:0] car_data, cdr_data,
+  output logic [15:0] ptr,
+  // ─── General ─────────────────────────────────────────────────────
+  output logic        done
 );
   // Memory layout parameters
   localparam int MemorySize = 256;
 
   typedef enum {
+    Idle,
+    ReadHeader,
+    ReadCar,
+    ReadCdr,
     WriteHeader,
     WriteCar,
     WriteCdr
-  } write_state_t;
+  } state_t;
 
-  write_state_t write_state = WriteCdr;
+  state_t state = Idle;
   logic [15:0] heap_ptr = HeapStart;
 
   (* ram_style = "block" *)
@@ -47,42 +51,57 @@ module memory #(
   end
 
   always_ff @(posedge clk) begin
+    done <= 0;
     if (rst) begin
       // Reset all stateful signals
-      data_ready  <= 0;
-      data_out    <= 0;
-      write_done  <= 0;
-      write_state <= WriteCdr;
-      heap_ptr    <= HeapStart;
+      state    <= Idle;
+      heap_ptr <= HeapStart;
     end else begin
-      // --- Read FSM ---
-      if (req) begin
-        data_out   <= memory[addr_in];
-        data_ready <= 1'b1;
-      end else begin
-        data_ready <= 1'b0;
-      end
-
-      write_done <= 0;
-      case (write_state)
-        WriteCdr: begin
-          if (write_enable) begin
-            memory[heap_ptr] <= cdr_data;
-            heap_ptr         <= heap_ptr + 1;
-            write_state      <= WriteCar;
+      case (state)
+        Idle: begin
+          if (read_enable) begin
+            state <= ReadHeader;
+          end else if (write_enable) begin
+            state <= WriteCdr;
+          end else begin
+            state <= Idle;
           end
+        end
+
+        // --- Read FSM ---
+        ReadHeader: begin
+          // Warning: this is being trimmed because our memory space is
+          // currently only 256 words. I think it's not an issue for now.
+          header_out <= memory[addr_in][14:0];
+          state      <= ReadCar;
+        end
+        ReadCar: begin
+          car_out <= memory[addr_in - 1];
+          state   <= ReadCdr;
+        end
+        ReadCdr: begin
+          cdr_out <= memory[addr_in - 2];
+          done    <= 1;
+          state   <= Idle;
+        end
+
+        // --- Write FSM ---
+        WriteCdr: begin
+          memory[heap_ptr] <= cdr_data;
+          heap_ptr         <= heap_ptr + 1;
+          state            <= WriteCar;
         end
         WriteCar: begin
           memory[heap_ptr] <= car_data;
           heap_ptr         <= heap_ptr + 1;
-          write_state      <= WriteHeader;
+          state            <= WriteHeader;
         end
         WriteHeader: begin
           memory[heap_ptr] <= {1'b0, data_type};
-          write_done       <= 1;
+          done             <= 1;
           heap_ptr         <= heap_ptr + 1;
           ptr              <= heap_ptr;
-          write_state      <= WriteCdr;
+          state            <= Idle;
         end
       endcase
     end

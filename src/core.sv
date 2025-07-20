@@ -19,9 +19,7 @@ module core (
 
   typedef enum {
     SelectExpr,
-    FetchHeader,
-    FetchCar,
-    FetchCdr,
+    Fetch,
     MemWait,
     Eval,
     Apply,
@@ -43,9 +41,6 @@ module core (
     logic [15:0] next;
   } reg_t;
   reg_t expr, val, error;
-  // The following registers aren't defined in LTUO, but I figure we can add
-  // them for clarity now, and remove them later if they are redundant.
-  reg_t header, car;
 
   //────────────────────────────────────────────────────────────
   // Memory
@@ -53,18 +48,24 @@ module core (
   struct packed {
     logic active;
     address_t addr;
-    logic [15:0] data_out;
     logic mem_ready;
     state_t continue_state;
   } memory_read;
 
+  logic [15:0] memory_addr_latched;
+  logic [15:0] mem_car, mem_cdr;
+  // slicing off the GC bit. I don't think core needs to worry about that
+  logic [14:0] mem_header;
+
   memory mem (
     .clk(clk),
     .rst(rst),
-    .req(memory_read.active),
-    .addr_in(memory_read.addr),
-    .data_ready(memory_read.mem_ready),
-    .data_out(memory_read.data_out)
+    .read_enable(memory_read.active),
+    .addr_in(memory_addr_latched),
+    .header_out(mem_header),
+    .car_out(mem_car),
+    .cdr_out(mem_cdr),
+    .done(memory_read.mem_ready)
   );
 
   //────────────────────────────────────────────────────────────
@@ -96,13 +97,10 @@ module core (
     val.next   = val.current;
     error.next = error.current;
 
-    car.next = car.current;
-    header.next = header.current;
-
     leds = 16'b0000;
 
     memory_read.active = 1'b0;
-    memory_read.addr   = 16'h0;
+    memory_read.addr   = 0;
     memory_read.continue_state = state.current;
 
     case (state.current)
@@ -110,7 +108,7 @@ module core (
       SelectExpr: begin
         if (go_pressed) begin
           expr.next = switches;
-          state.next = FetchHeader;
+          state.next = Fetch;
         end else begin
           state.next = SelectExpr;
         end
@@ -120,39 +118,22 @@ module core (
         if (memory_read.mem_ready) state.next = state.after_read;
       end
 
-      FetchHeader: begin
+      Fetch: begin
         memory_read.active         = 1'b1;
         memory_read.addr           = expr.current;
-        memory_read.continue_state = FetchCar;
-        state.next = MemWait;
-      end
-
-      // Retrieves the next expression from memory
-      FetchCar: begin
-        header.next = memory_read.data_out;
-        memory_read.active         = 1'b1;
-        memory_read.addr           = expr.current - 1;
-        memory_read.continue_state = FetchCdr;
-        state.next = MemWait;
-      end
-
-      FetchCdr: begin
-        car.next = memory_read.data_out;
-        memory_read.active         = 1'b1;
-        memory_read.addr           = expr.current - 2;
         memory_read.continue_state = Eval;
         state.next = MemWait;
       end
 
       // Determines what kind of thing the expr is, and what to do with it
       Eval: begin
-        case (header.current[14:0])
+        case (mem_header)
           lisp_defs::TYPE_NUMBER: begin
             // This evaluation is jank. What we really need to do is start
             // dealing with CLINK variables. However, since I just want to get
             // numbers to work for now, we are going to do this simple
             // version.
-            val.next = car.current;
+            val.next = mem_car;
             state.next = Halt;
           end
         default: begin
@@ -183,9 +164,6 @@ module core (
       expr.current  <= lisp_defs::LISP_NIL;
       val.current   <= lisp_defs::LISP_NIL;
       error.current <= lisp_defs::LISP_NIL;
-
-      car.current <= lisp_defs::LISP_NIL;
-      header.current <= lisp_defs::LISP_NIL;
     end else begin
       state.current <= state.next;
       expr.current  <= expr.next;
@@ -193,11 +171,9 @@ module core (
       error.current <= error.next;
 
       if (memory_read.active) begin
-        state.after_read <= memory_read.continue_state;
+        memory_addr_latched <= memory_read.addr;
+        state.after_read    <= memory_read.continue_state;
       end
-
-      car.current <= car.next;
-      header.current <= header.next;
     end
   end
 
