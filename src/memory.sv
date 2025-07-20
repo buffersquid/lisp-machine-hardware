@@ -41,13 +41,33 @@ module memory #(
   logic [15:0] memory[MemorySize];
 
   initial begin
-    memory[0] = lisp_defs::LISP_NIL;
-    memory[1] = lisp_defs::LISP_NIL;
-    memory[2] = 16'h789A;
-    memory[3] = { 1'b0, lisp_defs::TYPE_NUMBER };
-    // memory dump for integer 0x789A
-    // [ header, data_0, ptr (nil) ]
-    // expr = 15'h0003;
+    memory['h0] = lisp_defs::LISP_NIL;
+    // first number
+    memory['h1] = lisp_defs::LISP_NIL;
+    memory['h2] = 16'h0005;
+    memory['h3] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // second number
+    memory['h4] = lisp_defs::LISP_NIL;
+    memory['h5] = 16'h0003;
+    memory['h6] = { 1'b0, lisp_defs::TYPE_NUMBER };
+    // (3 nil)
+    memory['h7] = lisp_defs::LISP_NIL;
+    memory['h8] = 16'h0006;
+    memory['h9] = { 1'b0, lisp_defs::TYPE_CONS };
+    // (5 (3 nil))
+    memory['hA] = 16'h0009;
+    memory['hB] = 16'h0003;
+    memory['hC] = { 1'b0, lisp_defs::TYPE_CONS };
+    // (+ (5 (3 nil)))
+    memory['hD] = 16'h000C; // 12
+    memory['hE] = 16'h0012; // 18
+    memory['hF] = { 1'b0, lisp_defs::TYPE_CONS };
+    // Addition
+    memory['h10] = lisp_defs::LISP_NIL;
+    memory['h11] = lisp_defs::PRIMOP_ADD;
+    memory['h12] = { 1'b0, lisp_defs::TYPE_PRIMITIVE };
+    // memory dump for (+ 5 3) = (+ (5 (3 nil)))
+    // expr = 15'h000F;
   end
 
   always_ff @(posedge clk) begin

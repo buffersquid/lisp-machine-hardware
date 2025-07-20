@@ -9,10 +9,15 @@ package lisp_defs;
   //────────────────────────────────────────────────────────────
   // Basic Types
   //────────────────────────────────────────────────────────────
-  typedef enum logic [2:0] {
-    TYPE_NUMBER = 3'b000,
-    TYPE_CONS   = 3'b001
+  typedef enum logic [15:0] {
+    TYPE_NUMBER    = 16'h0,
+    TYPE_CONS      = 16'h1,
+    TYPE_PRIMITIVE = 16'h2
   } tag_t;
+
+  typedef enum logic [15:0] {
+    PRIMOP_ADD = 16'h0
+  } primitive_t;
 
   //────────────────────────────────────────────────────────────
   // Constants
