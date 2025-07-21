@@ -176,7 +176,8 @@ module core (
             val.next  = 0;
             read_mem(mem_car, Apply);
           end
-        default: send_error(EVAL_ERROR);
+
+          default: send_error(EVAL_ERROR);
         endcase
       end
 
@@ -208,6 +209,7 @@ module core (
             expr.next = mem_car;
             read_mem(args.current, EvalArgs);
           end
+
           default: send_error(APPLY_ERROR);
         endcase
       end
@@ -227,7 +229,7 @@ module core (
         case (expr.current)
           lisp_defs::PRIMOP_ADD: begin
             val.next = val.current + mem_car;
-            if (args.current == lisp_defs::LISP_NIL) begin
+            if (args.current == lisp_defs::NIL) begin
               state.next = Halt;
             end else begin
               read_mem(args.current, EvalArgs);
@@ -254,15 +256,15 @@ module core (
     if (rst) begin
       state.current    <= SelectExpr;
       state.after_read <= SelectExpr;
-      expr.current     <= lisp_defs::LISP_NIL;
-      val.current      <= lisp_defs::LISP_NIL;
-      args.current      <= lisp_defs::LISP_NIL;
+      expr.current     <= lisp_defs::NIL;
+      val.current      <= lisp_defs::NIL;
+      args.current     <= lisp_defs::NIL;
       error_code_reg   <= 4'h0;
     end else begin
       state.current <= state.next;
       expr.current  <= expr.next;
       val.current   <= val.next;
-      args.current   <= args.next;
+      args.current  <= args.next;
 
       if (entering_error_state) begin
         error_code_reg <= error_code; //Latch the error

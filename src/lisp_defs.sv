@@ -22,7 +22,7 @@ package lisp_defs;
   //────────────────────────────────────────────────────────────
   // Constants
   //────────────────────────────────────────────────────────────
-  localparam logic [15:0] LISP_NIL = 16'h0000;
+  localparam logic [15:0] NIL = 16'h0000;
 
 endpackage
 

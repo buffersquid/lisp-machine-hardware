@@ -41,17 +41,17 @@ module memory #(
   logic [15:0] memory[MemorySize];
 
   initial begin
-    memory['h0] = lisp_defs::LISP_NIL;
+    memory['h0] = lisp_defs::NIL;
     // first number
-    memory['h1] = lisp_defs::LISP_NIL;
+    memory['h1] = lisp_defs::NIL;
     memory['h2] = 16'h0005;
     memory['h3] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // second number
-    memory['h4] = lisp_defs::LISP_NIL;
+    memory['h4] = lisp_defs::NIL;
     memory['h5] = 16'h0003;
     memory['h6] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // (3 nil)
-    memory['h7] = lisp_defs::LISP_NIL;
+    memory['h7] = lisp_defs::NIL;
     memory['h8] = 16'h0006;
     memory['h9] = { 1'b0, lisp_defs::TYPE_CONS };
     // (5 (3 nil))
@@ -63,7 +63,7 @@ module memory #(
     memory['hE] = 16'h0012;
     memory['hF] = { 1'b0, lisp_defs::TYPE_CONS };
     // Addition
-    memory['h10] = lisp_defs::LISP_NIL;
+    memory['h10] = lisp_defs::NIL;
     memory['h11] = lisp_defs::PRIMOP_ADD;
     memory['h12] = { 1'b0, lisp_defs::TYPE_PRIMITIVE };
     // memory dump for (+ 5 3) = (+ (5 (3 nil)))

@@ -27,7 +27,7 @@ module core_sim();
 
   task clear_memory(input logic [15:0] mem[MemorySize]);
     begin
-      mem[0] = lisp_defs::LISP_NIL;
+      mem[0] = lisp_defs::NIL;
       for (int i = 1; i < d0.mem.MemorySize; i++) mem[i] = 16'h0000;
     end
   endtask
@@ -89,8 +89,8 @@ module core_sim();
   task test_eval_number();
     logic [15:0] mem[MemorySize];
     clear_memory(mem);
-    mem[0] = lisp_defs::LISP_NIL;
-    mem[1] = lisp_defs::LISP_NIL;
+    mem[0] = lisp_defs::NIL;
+    mem[1] = lisp_defs::NIL;
     mem[2] = 16'hDEAD;
     mem[3] = { 1'b0, lisp_defs::TYPE_NUMBER };
 
@@ -101,17 +101,17 @@ module core_sim();
     logic [15:0] mem[MemorySize];
     clear_memory(mem);
 
-    mem['h0] = lisp_defs::LISP_NIL;
+    mem['h0] = lisp_defs::NIL;
     // first number
-    mem['h1] = lisp_defs::LISP_NIL;
+    mem['h1] = lisp_defs::NIL;
     mem['h2] = 16'h0005;
     mem['h3] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // second number
-    mem['h4] = lisp_defs::LISP_NIL;
+    mem['h4] = lisp_defs::NIL;
     mem['h5] = 16'h0003;
     mem['h6] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // (3 nil)
-    mem['h7] = lisp_defs::LISP_NIL;
+    mem['h7] = lisp_defs::NIL;
     mem['h8] = 16'h0006;
     mem['h9] = { 1'b0, lisp_defs::TYPE_CONS };
     // (5 (3 nil))
@@ -123,7 +123,7 @@ module core_sim();
     mem['hE] = 16'h0012;
     mem['hF] = { 1'b0, lisp_defs::TYPE_CONS };
     // primitive +
-    mem['h10] = lisp_defs::LISP_NIL;
+    mem['h10] = lisp_defs::NIL;
     mem['h11] = lisp_defs::PRIMOP_ADD;
     mem['h12] = { 1'b0, lisp_defs::TYPE_PRIMITIVE };
 
@@ -134,29 +134,29 @@ module core_sim();
     logic [15:0] mem[MemorySize];
     clear_memory(mem);
 
-    mem['h0] = lisp_defs::LISP_NIL;
+    mem['h0] = lisp_defs::NIL;
     // first number
-    mem['h1] = lisp_defs::LISP_NIL;
+    mem['h1] = lisp_defs::NIL;
     mem['h2] = 16'h0005;
     mem['h3] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // second number
-    mem['h4] = lisp_defs::LISP_NIL;
+    mem['h4] = lisp_defs::NIL;
     mem['h5] = 16'h0003;
     mem['h6] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // third number
-    mem['h7] = lisp_defs::LISP_NIL;
+    mem['h7] = lisp_defs::NIL;
     mem['h8] = 16'h0002;
     mem['h9] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // fourth number
-    mem['hA] = lisp_defs::LISP_NIL;
+    mem['hA] = lisp_defs::NIL;
     mem['hB] = 16'h0001;
     mem['hC] = { 1'b0, lisp_defs::TYPE_NUMBER };
     // primitive +
-    mem['hD] = lisp_defs::LISP_NIL;
+    mem['hD] = lisp_defs::NIL;
     mem['hE] = lisp_defs::PRIMOP_ADD;
     mem['hF] = { 1'b0, lisp_defs::TYPE_PRIMITIVE };
     //(5 nil)
-    mem['h10] = lisp_defs::LISP_NIL;
+    mem['h10] = lisp_defs::NIL;
     mem['h11] = 16'h0003;
     mem['h12] = { 1'b0, lisp_defs::TYPE_CONS };
     //(3 (5 nil))

@@ -49,7 +49,7 @@ module memory_sim();
 
   task clear_memory();
     begin
-      m0.memory[0] = lisp_defs::LISP_NIL;
+      m0.memory[0] = lisp_defs::NIL;
       for (int i = 1; i < m0.MemorySize; i++) m0.memory[i] = 16'h0000;
     end
   endtask
@@ -112,11 +112,11 @@ module memory_sim();
     clear_memory();
     do_reset();
 
-    write_mem(lisp_defs::TYPE_NUMBER, 16'hDEAD, lisp_defs::LISP_NIL, ptr_array[0]);
-    write_mem(lisp_defs::TYPE_NUMBER, 16'hBEEF, lisp_defs::LISP_NIL, ptr_array[1]);
+    write_mem(lisp_defs::TYPE_NUMBER, 16'hDEAD, lisp_defs::NIL, ptr_array[0]);
+    write_mem(lisp_defs::TYPE_NUMBER, 16'hBEEF, lisp_defs::NIL, ptr_array[1]);
 
-    read_mem(ptr_array[0], lisp_defs::TYPE_NUMBER, 16'hDEAD, lisp_defs::LISP_NIL);
-    read_mem(ptr_array[1], lisp_defs::TYPE_NUMBER, 16'hBEEF, lisp_defs::LISP_NIL);
+    read_mem(ptr_array[0], lisp_defs::TYPE_NUMBER, 16'hDEAD, lisp_defs::NIL);
+    read_mem(ptr_array[1], lisp_defs::TYPE_NUMBER, 16'hBEEF, lisp_defs::NIL);
 
     $display("✅ All memory_sim tests completed successfully.");
     $finish;
