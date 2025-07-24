@@ -12,7 +12,8 @@ package lisp_defs;
   typedef enum logic [15:0] {
     TYPE_NUMBER    = 16'h0,
     TYPE_CONS      = 16'h1,
-    TYPE_PRIMITIVE = 16'h2
+    TYPE_PRIMITIVE = 16'h2,
+    TYPE_REG_STATE     = 16'h3
   } tag_t;
 
   typedef enum logic [15:0] {
@@ -23,6 +24,21 @@ package lisp_defs;
   // Constants
   //────────────────────────────────────────────────────────────
   localparam logic [15:0] NIL = 16'h0000;
+
+  //────────────────────────────────────────────────────────────
+  // State Variables
+  //────────────────────────────────────────────────────────────
+  typedef enum logic [15:0] {
+    SelectExpr,
+    Fetch,
+    MemWait,
+    Eval,
+    EvalArgs,
+    Apply,
+    ApplyArgs,
+    Halt,
+    Error
+  } state_t;
 
 endpackage
 

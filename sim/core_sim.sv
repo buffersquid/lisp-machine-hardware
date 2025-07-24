@@ -34,7 +34,7 @@ module core_sim();
 
   // Wait until system finishes execution
   task wait_until_done;
-    while (d0.state.current !== d0.Halt && d0.state.current !== d0.Error) begin
+    while (d0.state.current !== lisp_defs::Halt && d0.state.current !== lisp_defs::Error) begin
       @(posedge clk);
     end
     // Three more cycles to let everything settle down
@@ -76,7 +76,7 @@ module core_sim();
       wait_until_done();
 
       // ───── Validate results ───────────────────
-      if (d0.state.current == d0.Error) begin
+      if (d0.state.current == lisp_defs::Error) begin
         $fatal(1, "Execution failed: error = %h", d0.error_code_reg);
       end else if (d0.val.current !== expected_val) begin
         $fatal(1, "Assertion failed: val = %h (expected %h)", d0.val.current, expected_val);
