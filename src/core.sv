@@ -58,6 +58,7 @@ module core (
     logic [15:0] next;
   } reg_t;
   reg_t expr;
+  reg_t proc;
   reg_t val;
   reg_t args;
 
@@ -196,7 +197,7 @@ module core (
           lisp_defs::TYPE_PRIMITIVE: begin
             // Save the primop code in expression for now. Will probably need
             // to change once we get recursive evaluation going.
-            expr.next = mem_car;
+            proc.next = mem_car;
             read_mem(args.current, lisp_defs::EvalArgs);
           end
 
@@ -216,7 +217,7 @@ module core (
       // Finally, when we see that the arg is nil, we know we have reached the
       // end of the list, and go to halt.
       lisp_defs::ApplyArgs: begin
-        case (expr.current)
+        case (proc.current)
           lisp_defs::PRIMOP_ADD: begin
             val.next = val.current + mem_car;
             if (args.current == lisp_defs::NIL) begin
@@ -247,6 +248,7 @@ module core (
       state.current    <= lisp_defs::SelectExpr;
       state.after_read <= lisp_defs::SelectExpr;
       expr.current     <= lisp_defs::NIL;
+      proc.current     <= lisp_defs::NIL;
       val.current      <= lisp_defs::NIL;
       args.current     <= lisp_defs::NIL;
 
@@ -254,6 +256,7 @@ module core (
     end else begin
       state.current <= state.next;
       expr.current  <= expr.next;
+      proc.current  <= proc.next;
       val.current   <= val.next;
       args.current  <= args.next;
 
