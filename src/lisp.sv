@@ -1,14 +1,16 @@
-`ifndef LISP_DEFS_SV
-`define LISP_DEFS_SV
+`ifndef LISP_SV
+`define LISP_SV
 
 `timescale 1ns / 1ps
 `default_nettype none
 
-package lisp_defs;
+package lisp;
 
   //────────────────────────────────────────────────────────────
   // Basic Types
   //────────────────────────────────────────────────────────────
+  localparam word_size = 15;
+
   typedef enum logic [15:0] {
     TYPE_NUMBER    = 16'h0,
     TYPE_CONS      = 16'h1,
@@ -21,21 +23,12 @@ package lisp_defs;
   } primitive_t;
 
   //────────────────────────────────────────────────────────────
-  // Constants
-  //────────────────────────────────────────────────────────────
-  localparam logic [15:0] NIL = 16'h0000;
-
-  //────────────────────────────────────────────────────────────
   // State Variables
   //────────────────────────────────────────────────────────────
   typedef enum logic [15:0] {
     SelectExpr,
-    Fetch,
     MemWait,
     Eval,
-    EvalArgs,
-    Apply,
-    ApplyArgs,
     Halt,
     Error
   } state_t;
