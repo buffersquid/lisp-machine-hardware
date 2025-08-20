@@ -5,27 +5,26 @@
 `default_nettype none
 
 package lisp;
+  //────────────────────────────────────────────────────────────
+  // Default Values
+  //────────────────────────────────────────────────────────────
+  // 2^12 = 4K words = 4096 addresses
+  localparam addr_width = 12;
+  // 8 bits per address, so 8-bit computer
+  localparam data_width = 8;
 
   //────────────────────────────────────────────────────────────
-  // Basic Types
+  // Basic Memory Types
   //────────────────────────────────────────────────────────────
-  localparam word_size = 15;
-
-  typedef enum logic [15:0] {
-    TYPE_NUMBER    = 16'h0,
-    TYPE_CONS      = 16'h1,
-    TYPE_PRIMITIVE = 16'h2,
-    TYPE_REG_STATE     = 16'h3
-  } tag_t;
-
-  typedef enum logic [15:0] {
-    PRIMOP_ADD = 16'h0
-  } primitive_t;
+  typedef enum logic [data_width-1:0] {
+    TYPE_NUMBER = 8'h0
+  } header_t;
 
   //────────────────────────────────────────────────────────────
   // State Variables
   //────────────────────────────────────────────────────────────
-  typedef enum logic [15:0] {
+  typedef enum {
+    Boot,
     SelectExpr,
     MemWait,
     Eval,

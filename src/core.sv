@@ -40,8 +40,8 @@ module core (
   // Registers
   //────────────────────────────────────────────────────────────
   typedef struct packed {
-    logic [lisp::word_size:0] current;
-    logic [lisp::word_size:0] next;
+    logic [lisp::data_width-1:0] current;
+    logic [lisp::data_width-1:0] next;
   } reg_t;
   reg_t expr;
   reg_t val;
@@ -49,17 +49,25 @@ module core (
   //────────────────────────────────────────────────────────────
   // Memory
   //────────────────────────────────────────────────────────────
-  logic active_read;
-  logic [lisp::word_size:0] addr_in_latch;
+  logic active_read, boot_done, write_enable;
+  logic [11:0] addr_in_latch;
   // Inputs
-  logic [lisp::word_size:0] addr_in;
+  logic [11:0] addr_in;
+  logic [7:0] write_data;
   // Outputs
-  logic [lisp::word_size:0] mem_out;
+  logic [7:0] read_data;
 
-  memory mem (
+  memory_controller #(
+    .ADDR_WIDTH(lisp::addr_width),
+    .DATA_WIDTH(lisp::data_width)
+  ) mem (
     .clk(clk),
-    .addr_in(addr_in_latch),
-    .data_out(mem_out)
+    .rst(rst),
+    .boot_done(boot_done),
+    .addr(addr_in_latch),
+    .write_enable(write_enable),
+    .write_data(write_data),
+    .read_data(read_data)
   );
 
   //────────────────────────────────────────────────────────────
@@ -103,6 +111,10 @@ module core (
 
     case (state.current)
 
+      lisp::Boot: begin
+        if (boot_done) state.next = lisp::SelectExpr;
+      end
+
       lisp::SelectExpr: begin
         if (go_pressed) begin
           addr_in = switches;
@@ -117,7 +129,7 @@ module core (
 
       // Determines what kind of thing the expr is, and what to do with it
       lisp::Eval: begin
-        val.next = mem_out;
+        val.next = read_data;
         state.next = lisp::Halt;
       end
 
@@ -137,8 +149,8 @@ module core (
   //────────────────────────────────────────────────────────────
   always_ff @(posedge clk) begin
     if (rst) begin
-      state.current <= lisp::SelectExpr;
-      val.current   <= lisp::SelectExpr;
+      state.current <= lisp::Boot;
+      val.current   <= lisp::Boot;
     end else begin
       state.current <= state.next;
       val.current   <= val.next;

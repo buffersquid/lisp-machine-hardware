@@ -22,14 +22,14 @@ module core_sim();
     .anodes(anodes),
     .leds(leds)
   );
+  defparam d0.mem.BYPASS_BOOT = 1;
 
   always #10 clk = ~clk;
 
-  task clear_memory(input logic [lisp::word_size:0] mem[MemorySize]);
+  task clear_memory(input logic [lisp::data_width-1:0] mem[MemorySize]);
     begin
       for (int i = 0; i < MemorySize; i++) begin
         mem[i] = 16'h0000;
-        d0.mem.memory[i] = 16'h0000;
       end
     end
   endtask
@@ -47,9 +47,9 @@ module core_sim();
 
   // Main test function
   task run_expr_via_button(
-    input logic [lisp::word_size:0] expr_value,
-    input logic [lisp::word_size:0] mem_values[MemorySize],
-    input logic [lisp::word_size:0] expected_val
+    input logic [lisp::data_width-1:0] expr_value,
+    input logic [lisp::data_width-1:0] mem_values[MemorySize],
+    input logic [lisp::data_width-1:0] expected_val
   );
     begin
       // ───── Set switches to desired expr ───────
@@ -65,7 +65,7 @@ module core_sim();
 
       // ───── Set memory contents ───────────────
       for (int i = 0; i < MemorySize; i++) begin
-        d0.mem.memory[i] = mem_values[i];
+        d0.mem.ram.ram[i] = mem_values[i];
       end
 
       // ───── Pulse button to trigger start ──────
@@ -89,7 +89,7 @@ module core_sim();
   endtask
 
   initial begin
-    logic [lisp::word_size:0] memory[MemorySize];
+    logic [lisp::data_width-1:0] memory[MemorySize];
     clear_memory(memory);
     memory['h0] = { 1'b0, lisp::TYPE_NUMBER };
     memory['h1] = { 16'h2A2A };
