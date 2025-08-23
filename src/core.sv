@@ -80,6 +80,11 @@ module core (
     FETCH_TAG_STORE,
     FETCH_VAL_REQ,
     FETCH_VAL_STORE,
+    FETCH_CAR_REQ,
+    FETCH_CAR_STORE,
+    FETCH_CDR_REQ,
+    FETCH_CDR_STORE,
+    FETCH_DONE,
     FETCH_ERR
   } fetch_state_t;
 
@@ -90,11 +95,15 @@ module core (
 
   reg_t tag_reg;
   reg_t val_reg;
+  reg_t car_reg;
+  reg_t cdr_reg;
 
   always_comb begin
     fetch_state.next = fetch_state.current;
     tag_reg.next     = tag_reg.current;
     val_reg.next     = val_reg.current;
+    car_reg.next     = car_reg.current;
+    cdr_reg.next     = cdr_reg.current;
 
     active_read = 1'b0;
     addr_in     = '0;
@@ -120,6 +129,12 @@ module core (
             fetch_state.next = FETCH_VAL_REQ;
           end
 
+          lisp::TYPE_CONS: begin
+            addr_in = expr.current + 1;
+            active_read = 1'b1;
+            fetch_state.next = FETCH_CAR_REQ;
+          end
+
           default: fetch_state.next = FETCH_ERR;
         endcase
       end
@@ -127,6 +142,24 @@ module core (
       FETCH_VAL_REQ: fetch_state.next = FETCH_VAL_STORE;
       FETCH_VAL_STORE: begin
         val_reg.next = read_data;
+        fetch_state.next = FETCH_DONE;
+      end
+
+      FETCH_CAR_REQ: fetch_state.next = FETCH_CAR_STORE;
+      FETCH_CAR_STORE: begin
+        car_reg.next = read_data;
+        addr_in = expr.current + 2;
+        active_read = 1'b1;
+        fetch_state.next = FETCH_CDR_REQ;
+      end
+
+      FETCH_CDR_REQ: fetch_state.next = FETCH_CDR_STORE;
+      FETCH_CDR_STORE: begin
+        cdr_reg.next = read_data;
+        fetch_state.next = FETCH_DONE;
+      end
+
+      FETCH_DONE: begin
         fetch_done = 1'b1;
         fetch_state.next = FETCH_IDLE;
       end
@@ -142,10 +175,14 @@ module core (
       fetch_state.current <= FETCH_IDLE;
       tag_reg.current     <= 'h0;
       val_reg.current     <= 'h0;
+      car_reg.current     <= 'h0;
+      cdr_reg.current     <= 'h0;
     end else begin
       fetch_state.current <= fetch_state.next;
       tag_reg.current     <= tag_reg.next;
       val_reg.current     <= val_reg.next;
+      car_reg.current     <= car_reg.next;
+      cdr_reg.current     <= cdr_reg.next;
 
       if (active_read) begin
         addr_in_latch <= addr_in;
