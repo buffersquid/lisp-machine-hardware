@@ -1,28 +1,18 @@
-# LISP Machine (cons all the way down)
-
 # LISP Machine Hardware Implementation Plan
 
 ## Phase 1: Data Representation and Memory
 
-### Types
-
 Every type is at least 2 words in size. One word for the header, and the rest for data.
 Some types need more data than others.
 
-#### Atom
+### Atom Types
 
-Includes:
-- Number
-- Symbol
-- String
-- Functions
-
-##### Number
+#### Number
 ```
 [type_number]
 [data]
 ```
-##### Symbol
+#### Symbol
 ```
 [type_symbol]
 [pointer to obj]
@@ -52,7 +42,7 @@ And the system will know that you mean run the function `list` on arguments 1, 2
 If I will continue down the LISP-2 path, I'm not sure. Scheme uses LISP-1, and I'm a sucker for
 scheme...
 
-##### String
+#### String
 For strings, I am still pondering if to use a dynamic size, where we just look for `\0`,
 or to store the length in the header and cap the size of the string to some number. Since
 we have small word size, I'm tempted by dynamic, since header space is limited.
@@ -64,7 +54,7 @@ we have small word size, I'm tempted by dynamic, since header space is limited.
 [charN, \0]
 ```
 
-##### Functions
+#### Functions
 ```
 [type_function]
 [pointer to parameter list (cons list)]
@@ -72,7 +62,7 @@ we have small word size, I'm tempted by dynamic, since header space is limited.
 [closure env pointer (cons list)] # Probably ignoring this for now
 ```
 
-###### Primitives
+##### Primitive
 ```
 [type_function - subtype_primitive]
 [primitive ID] # For example, ADD = 0, SUB = 1, CAR = 2, CDR = 3, etc
@@ -80,9 +70,9 @@ we have small word size, I'm tempted by dynamic, since header space is limited.
 [nil] # No closure
 ```
 
-###### Lambda
+##### Lambda
 ```
-[type_function]
+[type_function - subtype_lambda]
 [pointer to parameter list (cons list)]
 [pointer to body expression (cons list)]
 [nil] # No captured lexical env for simple lambda
@@ -94,14 +84,14 @@ Example:
 0x20 = cons(x, cons(y, NIL)) = param list
 0x30 = cons('+', cons('x', cons('y', NIL))) = body
 
-[0x40] = [type_function | subtype_lambda]  ; e.g. 0x01 | 1 = lambda
-[0x41] = 0x20   ; → param list: (x y)
-[0x42] = 0x30   ; → body: (+ x y)
-[0x43] = NIL    ; → no captured environment
+[0x40] = [type_function - subtype_lambda]
+[0x41] = 0x20   ; -> param list: (x y)
+[0x42] = 0x30   ; -> body: (+ x y)
+[0x43] = NIL    ; -> no captured environment
 ```
-###### Closure (lambda with lexical env)
+##### Closure (lambda with lexical env)
 ```
-[type_function]
+[type_function - subtype_closure]
 [pointer to parameter list (cons list)]
 [pointer to body expression (cons list)]
 [pointer to captured env]
@@ -126,14 +116,14 @@ This creates a closure with:
 0x30 = cons('+', cons('x', cons('n', NIL))) = body
 0x51 = cons(cons('n', 5), NIL)
 
-[0x40] = [type_function | subtype_closure]
-[0x41] = 0x20   ; → param list: (x)
-[0x42] = 0x30   ; → body: (+ x n)
-[0x43] = 0x51   ; → pointer to captures env: ((n . 5))
+[0x40] = [type_function - subtype_closure]
+[0x41] = 0x20   ; -> param list: (x)
+[0x42] = 0x30   ; -> body: (+ x n)
+[0x43] = 0x51   ; -> pointer to captures env: ((n . 5))
 
 ```
 
-#### Cons
+### Cons Types
 ```
 [type_cons]
 [pointer to car (anything)]
