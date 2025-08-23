@@ -49,6 +49,9 @@ module core (
   //────────────────────────────────────────────────────────────
   // Memory
   //────────────────────────────────────────────────────────────
+  // Control signals
+  logic start_fetch, fetch_done;
+
   logic active_read, boot_done, write_enable;
   logic [lisp::addr_width-1:0] addr_in_latch;
   // Inputs
@@ -69,6 +72,77 @@ module core (
     .write_data(write_data),
     .read_data(read_data)
   );
+
+  typedef enum {
+    FETCH_IDLE,
+    FETCH_TAG_REQ,
+    FETCH_TAG_STORE,
+    FETCH_VAL_REQ,
+    FETCH_VAL_STORE
+  } fetch_state_t;
+
+  struct packed {
+    fetch_state_t current;
+    fetch_state_t next;
+  } fetch_state;
+
+  reg_t tag_reg;
+  reg_t val_reg;
+
+  always_comb begin
+    fetch_state.next = fetch_state.current;
+    tag_reg.next     = tag_reg.current;
+    val_reg.next     = val_reg.current;
+
+    active_read = 1'b0;
+    addr_in     = '0;
+    fetch_done  = 1'b0;
+
+    case (fetch_state.current)
+      FETCH_IDLE: begin
+        if (start_fetch) begin
+          addr_in = expr.current;
+          active_read = 1'b1;
+          fetch_state.next = FETCH_TAG_REQ;
+        end
+      end
+
+      FETCH_TAG_REQ: fetch_state.next = FETCH_TAG_STORE;
+      FETCH_TAG_STORE: begin
+        tag_reg.next = read_data;
+        case (read_data)
+          lisp::TYPE_NUMBER: begin
+            addr_in = expr.current + 1;
+            active_read = 1'b1;
+            fetch_state.next = FETCH_VAL_REQ;
+          end
+        endcase
+      end
+
+      FETCH_VAL_REQ: fetch_state.next = FETCH_VAL_STORE;
+      FETCH_VAL_STORE: begin
+        val_reg.next = read_data;
+        fetch_done = 1'b1;
+        fetch_state.next = FETCH_IDLE;
+      end
+    endcase
+  end
+
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      fetch_state.current <= FETCH_IDLE;
+      tag_reg.current     <= 'h0;
+      val_reg.current     <= 'h0;
+    end else begin
+      fetch_state.current <= fetch_state.next;
+      tag_reg.current     <= tag_reg.next;
+      val_reg.current     <= val_reg.next;
+
+      if (active_read) begin
+        addr_in_latch <= addr_in;
+      end
+    end
+  end
 
   //────────────────────────────────────────────────────────────
   // Seven-segment display
@@ -99,10 +173,10 @@ module core (
 
   always_comb begin
     state.next = state.current;
+    expr.next  = expr.current;
     val.next   = val.current;
 
-    active_read = 1'b0;
-    addr_in = 'h0;
+    start_fetch = 1'b0;
 
     leds = 16'b0000;
     // Tehnically, this is a STATE ERROR, but it doesn't really matter if we
@@ -117,20 +191,24 @@ module core (
 
       lisp::SelectExpr: begin
         if (go_pressed) begin
-          addr_in = switches;
-          active_read = 1'b1;
+          expr.next = switches;
+          start_fetch  = 1'b1;
           state.next = lisp::MemWait;
         end else begin
           state.next = lisp::SelectExpr;
         end
       end
 
-      lisp::MemWait: state.next = lisp::Eval;
+      lisp::MemWait: if (fetch_done) state.next = lisp::Eval;
 
       // Determines what kind of thing the expr is, and what to do with it
       lisp::Eval: begin
-        val.next = read_data;
-        state.next = lisp::Halt;
+        case (tag_reg.current)
+          lisp::TYPE_NUMBER: begin
+            val.next = val_reg.current;
+            state.next = lisp::Halt;
+          end
+        endcase
       end
 
       lisp::Halt: leds = LED_HALT;
@@ -151,13 +229,11 @@ module core (
     if (rst) begin
       state.current <= lisp::Boot;
       val.current   <= lisp::Boot;
+      expr.current  <= 'h0;
     end else begin
       state.current <= state.next;
       val.current   <= val.next;
-
-      if (active_read) begin
-        addr_in_latch <= addr_in;
-      end
+      expr.current  <= expr.next;
 
       if (entering_error_state) begin
         error_code_reg <= error_code; //Latch the error

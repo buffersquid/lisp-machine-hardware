@@ -132,5 +132,24 @@ This creates a closure with:
 
 ---
 
+## Minimal Evaluation Procedure
+
+There are three main states executed during the evaluation of an expression.
+- Eval:
+  - Look at the expression type (pretty much just `cons` vs `atom`)
+  - FetchObject:
+    - Sub FSM to gather all the object data into respective registers
+  - Eval Dispatch:
+    - Branch on tag
+  - If `CONS`:
+    - Recursively handle via CLINK
+- Apply:
+  - If it's a primitive, run it.
+  - If it's user-defined, push a continuation and evaluate the body
+- Eval Args:
+  - Iterate over arguments, evaluate them, and collect results.
+
+---
+
 ## Contribution:
 [Style Guide for System Verilog](https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md)

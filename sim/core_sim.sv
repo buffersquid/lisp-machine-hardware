@@ -91,9 +91,9 @@ module core_sim();
   initial begin
     logic [lisp::data_width-1:0] memory[MemorySize];
     clear_memory(memory);
-    memory['h0] = { 1'b0, lisp::TYPE_NUMBER };
-    memory['h1] = { 16'h2A2A };
-    run_expr_via_button(16'h0001, memory, 16'h2A2A);
+    memory['h0] = lisp::TYPE_NUMBER;
+    memory['h1] = 8'h2A;
+    run_expr_via_button(16'h0000, memory, 8'h2A);
 
     $display("✅ All tests passed!");
     $finish;
