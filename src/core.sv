@@ -50,12 +50,12 @@ module core (
   // Memory
   //────────────────────────────────────────────────────────────
   logic active_read, boot_done, write_enable;
-  logic [11:0] addr_in_latch;
+  logic [lisp::addr_width-1:0] addr_in_latch;
   // Inputs
-  logic [11:0] addr_in;
-  logic [7:0] write_data;
+  logic [lisp::addr_width-1:0] addr_in;
+  logic [lisp::data_width-1:0] write_data;
   // Outputs
-  logic [7:0] read_data;
+  logic [lisp::data_width-1:0] read_data;
 
   memory_controller #(
     .ADDR_WIDTH(lisp::addr_width),

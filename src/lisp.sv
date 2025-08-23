@@ -17,8 +17,16 @@ package lisp;
   // Basic Memory Types
   //────────────────────────────────────────────────────────────
   typedef enum logic [data_width-1:0] {
-    TYPE_NUMBER = 8'h0
+    TYPE_NUMBER,
+    TYPE_CONS,
+    TYPE_FUNC_PRIM
   } header_t;
+
+  typedef enum logic [data_width-1:0] {
+    TYPE_PRIM_ADD
+  } primitive_t;
+
+  localparam NIL = 8'h0;
 
   //────────────────────────────────────────────────────────────
   // State Variables
