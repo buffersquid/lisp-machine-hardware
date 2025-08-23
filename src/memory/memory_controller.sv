@@ -16,7 +16,8 @@ module memory_controller #(
   input wire   write_enable,
   input wire   [ADDR_WIDTH-1:0] addr,
   input wire   [DATA_WIDTH-1:0] write_data,
-  output logic [DATA_WIDTH-1:0] read_data
+  output logic [DATA_WIDTH-1:0] read_data,
+  output logic memory_error
 );
   //────────────────────────────────────────────────────────────
   // Types
@@ -25,7 +26,8 @@ module memory_controller #(
     FETCH_ROM,
     FETCH_ROM_WAIT,
     WRITE_RAM,
-    RUNNING
+    RUNNING,
+    ERROR
   } boot_state_t;
 
   boot_state_t state, next_state;
@@ -81,6 +83,7 @@ module memory_controller #(
     ram_addr_internal = addr;
     ram_write_data_internal = write_data;
     boot_done = 1'b0;
+    memory_error = 1'b0;
 
     case (state)
       FETCH_ROM: next_state = WRITE_RAM;
@@ -106,6 +109,12 @@ module memory_controller #(
         ram_addr_internal = addr;
         ram_write_data_internal = write_data;
       end
+
+      ERROR: begin
+        memory_error = 1'b1;
+      end
+
+      default: next_state = ERROR;
     endcase
   end
 

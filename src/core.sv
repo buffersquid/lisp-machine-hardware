@@ -50,7 +50,7 @@ module core (
   // Memory
   //────────────────────────────────────────────────────────────
   // Control signals
-  logic start_fetch, fetch_done;
+  logic start_fetch, fetch_done, fetch_error, mem_error;
 
   logic active_read, boot_done, write_enable;
   logic [lisp::addr_width-1:0] addr_in_latch;
@@ -70,7 +70,8 @@ module core (
     .addr(addr_in_latch),
     .write_enable(write_enable),
     .write_data(write_data),
-    .read_data(read_data)
+    .read_data(read_data),
+    .memory_error(mem_error)
   );
 
   typedef enum {
@@ -78,7 +79,8 @@ module core (
     FETCH_TAG_REQ,
     FETCH_TAG_STORE,
     FETCH_VAL_REQ,
-    FETCH_VAL_STORE
+    FETCH_VAL_STORE,
+    FETCH_ERR
   } fetch_state_t;
 
   struct packed {
@@ -97,6 +99,7 @@ module core (
     active_read = 1'b0;
     addr_in     = '0;
     fetch_done  = 1'b0;
+    fetch_error = 1'b0;
 
     case (fetch_state.current)
       FETCH_IDLE: begin
@@ -116,6 +119,8 @@ module core (
             active_read = 1'b1;
             fetch_state.next = FETCH_VAL_REQ;
           end
+
+          default: fetch_state.next = FETCH_ERR;
         endcase
       end
 
@@ -125,6 +130,10 @@ module core (
         fetch_done = 1'b1;
         fetch_state.next = FETCH_IDLE;
       end
+
+      FETCH_ERR: fetch_error = 1'b1;
+
+      default: fetch_state.next = FETCH_ERR;
     endcase
   end
 
@@ -192,14 +201,24 @@ module core (
       lisp::SelectExpr: begin
         if (go_pressed) begin
           expr.next = switches;
-          start_fetch  = 1'b1;
-          state.next = lisp::MemWait;
+          state.next = lisp::StartFetch;
         end else begin
           state.next = lisp::SelectExpr;
         end
       end
 
-      lisp::MemWait: if (fetch_done) state.next = lisp::Eval;
+      lisp::StartFetch: begin
+        start_fetch = 1'b1;
+        state.next = lisp::MemWait;
+      end
+
+      lisp::MemWait: begin
+        if (fetch_error | mem_error) begin
+          send_error(FETCH_ERROR);
+        end else if (fetch_done) begin
+          state.next = lisp::Eval;
+        end
+      end
 
       // Determines what kind of thing the expr is, and what to do with it
       lisp::Eval: begin
@@ -208,6 +227,8 @@ module core (
             val.next = val_reg.current;
             state.next = lisp::Halt;
           end
+
+          default: send_error(EVAL_ERROR);
         endcase
       end
 

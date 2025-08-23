@@ -90,9 +90,35 @@ module core_sim();
   initial begin
     logic [lisp::data_width-1:0] memory[MemorySize];
     clear_memory(memory);
+    // memory['h0] = lisp::TYPE_NUMBER;
+    // memory['h1] = 8'h2A;
     memory['h0] = lisp::TYPE_NUMBER;
-    memory['h1] = 8'h2A;
-    run_expr_via_button(16'h0000, memory, 8'h2A);
+    memory['h1] = 8'h05;
+    memory['h2] = lisp::TYPE_NUMBER;
+    memory['h3] = 8'h03;
+    // + primitive
+    memory['h4] = lisp::TYPE_FUNC_PRIM;
+    memory['h5] = lisp::TYPE_PRIM_ADD;
+    memory['h6] = lisp::NIL;
+    memory['h7] = lisp::NIL;
+
+    // expr: (+ 5 3) = (+ (5 (3 NIL)))
+    // (CONS 3 NIL)
+    memory['h8] = lisp::TYPE_CONS;
+    memory['h9] = 8'h3;
+    memory['hA] = lisp::NIL;
+
+    // (CONS 5 (CONS 3 NIL))
+    memory['hB] = lisp::TYPE_CONS;
+    memory['hC] = 8'h1;
+    memory['hD] = 8'h8;
+
+    // (CONS + (CONS 5 (CONS 3 NIL)))
+    memory['hE]  = lisp::TYPE_CONS;
+    memory['hF]  = 8'h4;
+    memory['h10] = 8'hB;
+    run_expr_via_button(16'h0000, memory, 8'h05);
+    // run_expr_via_button(8'h0B, memory, 8'h05);
 
     $display("✅ All tests passed!");
     $finish;

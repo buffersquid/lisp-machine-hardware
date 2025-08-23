@@ -34,6 +34,7 @@ package lisp;
   typedef enum {
     Boot,
     SelectExpr,
+    StartFetch,
     MemWait,
     Eval,
     Halt,
