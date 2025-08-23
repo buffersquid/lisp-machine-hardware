@@ -6,6 +6,8 @@ module memory_controller_sim();
   localparam addrWidth = 6;
   localparam dataWidth = 8;
 
+  localparam int MemorySize = 1024;
+
   logic clk = 0;
   logic rst;
   logic boot_done;
@@ -17,7 +19,8 @@ module memory_controller_sim();
   // Instantiate the memory module
   memory_controller #(
     .ADDR_WIDTH(addrWidth), // 2^6 = 64
-    .DATA_WIDTH(dataWidth)
+    .DATA_WIDTH(dataWidth),
+    .BYPASS_BOOT(1)
   ) m0 (
     .clk(clk),
     .rst(rst),
@@ -31,8 +34,17 @@ module memory_controller_sim();
   // Clock generation: 50 MHz clock (20 ns period)
   always #10 clk = ~clk;
 
+  task clear_memory(input logic [dataWidth-1:0] mem[MemorySize]);
+    begin
+      for (int i = 0; i < MemorySize; i++) begin
+        mem[i] = 16'h0000;
+      end
+    end
+  endtask
+
   // Task to perform a read request and check output
   task read_mem(
+    input logic [dataWidth-1:0] mem_values[MemorySize],
     input logic [addrWidth-1:0] address,
     input logic [dataWidth-1:0] expected_data
   );
@@ -42,7 +54,12 @@ module memory_controller_sim();
       @(posedge clk)
       rst = 0;
       @(posedge clk)
-      wait(boot_done);
+
+      // ───── Set memory contents ───────────────
+      for (int i = 0; i < MemorySize; i++) begin
+        m0.ram.ram[i] = mem_values[i];
+      end
+
       addr = address;
       @(posedge clk);
       @(posedge clk);
@@ -55,7 +72,11 @@ module memory_controller_sim();
   endtask
 
   initial begin
-    read_mem(8'h01, 8'h2A);
+    logic [lisp::data_width-1:0] memory[MemorySize];
+    clear_memory(memory);
+    memory['h0] = lisp::TYPE_NUMBER;
+    memory['h1] = 8'h2A;
+    read_mem(memory, 8'h01, 8'h2A);
 
     $display("✅ All memory_sim tests completed successfully.");
     $finish;

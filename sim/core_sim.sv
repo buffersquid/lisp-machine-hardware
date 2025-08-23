@@ -59,7 +59,6 @@ module core_sim();
       // ───── Reset core and memory ───────────────
       rst = 1;
       for (int i = 0; i < 3; i++) @(posedge clk);
-      // @(posedge clk);
       rst = 0;
       @(posedge clk);
 
