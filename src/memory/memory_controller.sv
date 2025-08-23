@@ -61,7 +61,6 @@ module memory_controller #(
     if (rst) begin
       if (BYPASS_BOOT) begin
         state <= RUNNING;
-        boot_done <= 1;
       end else begin
         state <= FETCH_ROM;
         boot_addr <= {ADDR_WIDTH{1'b0}};
@@ -92,7 +91,6 @@ module memory_controller #(
         ram_write_data_internal = rom_data;
 
         if (boot_addr == {ADDR_WIDTH{1'b1}}) begin
-          boot_done = 1'b1;
           next_state = RUNNING;
         end else begin
           next_state = FETCH_ROM;
@@ -103,6 +101,7 @@ module memory_controller #(
 
         // Pass external RAM interface to internal since now all memory
         // actions will be RAM based
+        boot_done = 1'b1;
         ram_write_enable_internal = write_enable;
         ram_addr_internal = addr;
         ram_write_data_internal = write_data;
