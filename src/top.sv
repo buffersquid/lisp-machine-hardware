@@ -7,7 +7,7 @@ module top (
   output logic [ 3:0] ANODES
 );
 
-  core my_core (
+  core c0 (
     .clk(CLK100MHZ),
     .rst(BTN[4]),
     .btn_start(BTN[0]),

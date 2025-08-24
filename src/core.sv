@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-`include "lisp_defs.sv"
+`include "lisp.sv"
 
 module core (
   input  wire         clk,
@@ -15,38 +15,27 @@ module core (
   //────────────────────────────────────────────────────────────
   // Types
   //────────────────────────────────────────────────────────────
-  typedef logic [15:0] address_t;
-
   // Error codes
-  localparam logic [ 3:0] STATE_ERROR = 4'h0;
-  localparam logic [ 3:0] FETCH_ERROR = 4'h1;
-  localparam logic [ 3:0] EVAL_ERROR  = 4'h2;
-  localparam logic [ 3:0] APPLY_ERROR = 4'h3;
+  typedef enum {
+    NO_ERR,
+    STATE_ERROR,
+    FETCH_ERROR,
+    EVAL_ERROR,
+    APPLY_ERROR
+  } error_code_e;
   localparam logic [15:0] LED_ERROR   = 16'hFFFF;
   localparam logic [15:0] LED_HALT    = 16'h0001;
-  logic [3:0]  error_code, error_code_reg;
+  error_code_e  error_code, error_code_reg;
 
   //────────────────────────────────────────────────────────────
   // Functions & Tasks
   //────────────────────────────────────────────────────────────
-  task automatic read_mem(
-    input address_t addr,
-    input lisp_defs::state_t next_state
-  );
-    begin
-      memory_read.active         = 1'b1;
-      memory_read.addr           = addr;
-      memory_read.continue_state = next_state;
-      state.next = lisp_defs::MemWait;
-    end
-  endtask
-
   task automatic send_error(
-    input logic [3:0] error
+    input error_code_e error
   );
   begin
     error_code = error;
-    state.next = lisp_defs::Error;
+    state.next = lisp::Error;
   end
   endtask
 
@@ -54,186 +43,298 @@ module core (
   // Registers
   //────────────────────────────────────────────────────────────
   typedef struct packed {
-    logic [15:0] current;
-    logic [15:0] next;
+    logic [lisp::data_width-1:0] current;
+    logic [lisp::data_width-1:0] next;
   } reg_t;
-  reg_t expr;
-  reg_t proc;
   reg_t val;
-  reg_t args;
+
+  typedef struct packed {
+    logic [lisp::addr_width-1:0] current;
+    logic [lisp::addr_width-1:0] next;
+  } areg_t;
+  areg_t expr;
 
   //────────────────────────────────────────────────────────────
   // Memory
   //────────────────────────────────────────────────────────────
-  struct packed {
-    logic active;
-    address_t addr;
-    logic mem_ready;
-    lisp_defs::state_t continue_state;
-  } memory_read;
+  // Control signals
+  logic start_fetch, fetch_done, fetch_error, mem_error;
 
-  logic [15:0] memory_addr_latched;
-  logic [15:0] mem_car, mem_cdr;
-  // slicing off the GC bit. I don't think core needs to worry about that
-  logic [14:0] mem_header;
+  logic active_read, boot_done, write_enable;
+  logic [lisp::addr_width-1:0] addr_in_latch;
+  // Inputs
+  logic [lisp::addr_width-1:0] addr_in;
+  logic [lisp::data_width-1:0] write_data;
+  // Outputs
+  logic [lisp::data_width-1:0] read_data;
 
-  memory mem (
+  memory_controller #(
+    .ADDR_WIDTH(lisp::addr_width),
+    .DATA_WIDTH(lisp::data_width)
+  ) mem (
     .clk(clk),
     .rst(rst),
-    .read_enable(memory_read.active),
-    .addr_in(memory_addr_latched),
-    .header_out(mem_header),
-    .car_out(mem_car),
-    .cdr_out(mem_cdr),
-    .done(memory_read.mem_ready)
+    .boot_done(boot_done),
+    .addr(addr_in_latch),
+    .write_enable(write_enable),
+    .write_data(write_data),
+    .read_data(read_data),
+    .memory_error(mem_error)
   );
 
-  //────────────────────────────────────────────────────────────
-  // Seven-segment display
-  //────────────────────────────────────────────────────────────
-  logic [15:0] display_value;
-  assign display_value = (state.current == lisp_defs::SelectExpr) ? switches : val.current;
-  seven_segment ssg (
-    .clk(clk),
-    .hex(display_value),
-    .error(state.current == lisp_defs::Error),
-    .error_code(error_code_reg),
-    .cathodes(cathodes),
-    .anodes(anodes)
-  );
+  typedef enum {
+    FETCH_IDLE,
+    FETCH_TAG_REQ,
+    FETCH_TAG_STORE,
+    FETCH_VAL_REQ,
+    FETCH_VAL_STORE,
+    FETCH_CONS_CAR_REQ,
+    FETCH_CONS_CAR_STORE,
+    FETCH_CONS_CDR_REQ,
+    FETCH_CONS_CDR_STORE,
+    FETCH_FUNC_BODY_REQ,
+    FETCH_FUNC_BODY_STORE,
+    FETCH_FUNC_ARGS_REQ,
+    FETCH_FUNC_ARGS_STORE,
+    FETCH_FUNC_ENV_REQ,
+    FETCH_FUNC_ENV_STORE,
+    FETCH_DONE,
+    FETCH_ERR
+  } fetch_state_t;
+
+  struct packed {
+    fetch_state_t current;
+    fetch_state_t next;
+  } fetch_state;
+
+  reg_t tag_reg;
+  reg_t val_reg;
+  reg_t car_reg;
+  reg_t cdr_reg;
+  reg_t func_body_reg;
+  reg_t func_args_reg;
+  reg_t func_env_reg;
+
+  always_comb begin
+    fetch_state.next   = fetch_state.current;
+    tag_reg.next       = tag_reg.current;
+    val_reg.next       = val_reg.current;
+    car_reg.next       = car_reg.current;
+    cdr_reg.next       = cdr_reg.current;
+    func_body_reg.next = func_body_reg.current;
+    func_args_reg.next = func_args_reg.current;
+    func_env_reg.next  = func_env_reg.current;
+
+    active_read = 1'b0;
+    addr_in     = '0;
+    fetch_done  = 1'b0;
+    fetch_error = 1'b0;
+
+    unique case (fetch_state.current)
+      FETCH_IDLE: begin
+        if (start_fetch) begin
+          addr_in = expr.current;
+          active_read = 1'b1;
+          fetch_state.next = FETCH_TAG_REQ;
+        end
+      end
+
+      FETCH_TAG_REQ: fetch_state.next = FETCH_TAG_STORE;
+      FETCH_TAG_STORE: begin
+        tag_reg.next = read_data;
+        unique case (read_data)
+          lisp::TYPE_NUMBER: begin
+            addr_in = expr.current + 1;
+            active_read = 1'b1;
+            fetch_state.next = FETCH_VAL_REQ;
+          end
+
+          lisp::TYPE_CONS: begin
+            addr_in = expr.current + 1;
+            active_read = 1'b1;
+            fetch_state.next = FETCH_CONS_CAR_REQ;
+          end
+
+          lisp::TYPE_FUNC_PRIM: begin
+            addr_in = expr.current + 1;
+            active_read = 1'b1;
+            fetch_state.next = FETCH_FUNC_BODY_REQ;
+          end
+
+          default: fetch_state.next = FETCH_ERR;
+        endcase
+      end
+
+      FETCH_VAL_REQ: fetch_state.next = FETCH_VAL_STORE;
+      FETCH_VAL_STORE: begin
+        val_reg.next = read_data;
+        fetch_state.next = FETCH_DONE;
+      end
+
+      FETCH_CONS_CAR_REQ: fetch_state.next = FETCH_CONS_CAR_STORE;
+      FETCH_CONS_CAR_STORE: begin
+        car_reg.next = read_data;
+        addr_in = expr.current + 2;
+        active_read = 1'b1;
+        fetch_state.next = FETCH_CONS_CDR_REQ;
+      end
+
+      FETCH_CONS_CDR_REQ: fetch_state.next = FETCH_CONS_CDR_STORE;
+      FETCH_CONS_CDR_STORE: begin
+        cdr_reg.next = read_data;
+        fetch_state.next = FETCH_DONE;
+      end
+
+      FETCH_FUNC_BODY_REQ: fetch_state.next = FETCH_FUNC_BODY_STORE;
+      FETCH_FUNC_BODY_STORE: begin
+        func_body_reg.next = read_data;
+        if (tag_reg.current == lisp::TYPE_FUNC_PRIM) begin
+          fetch_state.next = FETCH_DONE;
+        end else begin
+          addr_in = expr.current + 2;
+          active_read = 1'b1;
+          fetch_state.next = FETCH_FUNC_ARGS_REQ;
+        end
+      end
+
+      FETCH_FUNC_ARGS_REQ: fetch_state.next = FETCH_FUNC_ARGS_STORE;
+      FETCH_FUNC_ARGS_STORE: begin
+        func_args_reg.next = read_data;
+        addr_in = expr.current + 3;
+        active_read = 1'b1;
+        fetch_state.next = FETCH_FUNC_ENV_REQ;
+      end
+
+      FETCH_FUNC_ENV_REQ: fetch_state.next = FETCH_FUNC_ENV_STORE;
+      FETCH_FUNC_ENV_STORE: begin
+        func_env_reg.next = read_data;
+        fetch_state.next = FETCH_DONE;
+      end
+
+      FETCH_DONE: begin
+        fetch_done = 1'b1;
+        fetch_state.next = FETCH_IDLE;
+      end
+
+      FETCH_ERR: begin
+        fetch_error = 1'b1;
+        fetch_state.next = FETCH_ERR;
+      end
+
+      default: fetch_state.next = FETCH_ERR;
+    endcase
+  end
+
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      fetch_state.current   <= FETCH_IDLE;
+      tag_reg.current       <= 'h0;
+      val_reg.current       <= 'h0;
+      car_reg.current       <= 'h0;
+      cdr_reg.current       <= 'h0;
+      func_body_reg.current <= 'h0;
+      func_args_reg.current <= 'h0;
+      func_env_reg.current  <= 'h0;
+    end else begin
+      fetch_state.current   <= fetch_state.next;
+      tag_reg.current       <= tag_reg.next;
+      val_reg.current       <= val_reg.next;
+      car_reg.current       <= car_reg.next;
+      cdr_reg.current       <= cdr_reg.next;
+      func_body_reg.current <= func_body_reg.next;
+      func_args_reg.current <= func_args_reg.next;
+      func_env_reg.current  <= func_env_reg.next;
+
+      if (active_read) begin
+        addr_in_latch <= addr_in;
+      end
+    end
+  end
 
   //────────────────────────────────────────────────────────────
   // Combinational FSM Logic
   //────────────────────────────────────────────────────────────
   struct packed {
-    lisp_defs::state_t current;
-    lisp_defs::state_t next, after_read;
+    lisp::state_t current;
+    lisp::state_t next;
   } state;
 
   logic go_pressed, go_prev;
 
   logic entering_error_state;
-  assign entering_error_state = (state.current != lisp_defs::Error) && (state.next == lisp_defs::Error);
+  assign entering_error_state = (state.current != lisp::Error) && (state.next == lisp::Error);
 
+  //────────────────────────────────────────────────────────────
+  // Seven-segment display
+  //────────────────────────────────────────────────────────────
+  logic [15:0] display_value;
+  assign display_value = (state.current == lisp::SelectExpr) ? switches : val.current;
+  seven_segment ssg (
+    .clk(clk),
+    .hex(display_value),
+    .error(state.current == lisp::Error),
+    .error_code(error_code_reg),
+    .cathodes(cathodes),
+    .anodes(anodes)
+  );
 
   always_comb begin
     state.next = state.current;
     expr.next  = expr.current;
     val.next   = val.current;
-    args.next  = args.current;
+
+    start_fetch = 1'b0;
+    write_enable = 1'b0;
+    write_data = 'h0;
 
     leds = 16'b0000;
-    // Tehnically, this is a STATE ERROR, but it doesn't really matter if we
-    // don't get into the error state.
-    error_code = 4'h0;
+    error_code = NO_ERR;
 
-    memory_read.active = 1'b0;
-    memory_read.addr   = 0;
-    memory_read.continue_state = state.current;
+    unique case (state.current)
 
-    case (state.current)
+      lisp::Boot: begin
+        if (boot_done) state.next = lisp::SelectExpr;
+      end
 
-      lisp_defs::SelectExpr: begin
+      lisp::SelectExpr: begin
         if (go_pressed) begin
           expr.next = switches;
-          state.next = lisp_defs::Fetch;
+          state.next = lisp::StartFetch;
         end else begin
-          state.next = lisp_defs::SelectExpr;
+          state.next = lisp::SelectExpr;
         end
       end
 
-      lisp_defs::MemWait: begin
-        if (memory_read.mem_ready) state.next = state.after_read;
+      lisp::StartFetch: begin
+        start_fetch = 1'b1;
+        state.next = lisp::MemWait;
       end
 
-      lisp_defs::Fetch: read_mem(expr.current, lisp_defs::Eval);
+      lisp::MemWait: begin
+        if (fetch_error || mem_error) begin
+          send_error(FETCH_ERROR);
+        end else if (fetch_done) begin
+          state.next = lisp::Eval;
+        end
+      end
 
       // Determines what kind of thing the expr is, and what to do with it
-      lisp_defs::Eval: begin
-        case (mem_header)
-          lisp_defs::TYPE_NUMBER: begin
-            // This evaluation is jank. What we really need to do is start
-            // dealing with CLINK variables. However, since I just want to get
-            // numbers to work for now, we are going to do this simple
-            // version.
-            val.next = mem_car;
-            state.next = lisp_defs::Halt;
-          end
-
-          lisp_defs::TYPE_CONS: begin
-            // It's a TYPE_CONS, so it's a procedure of some sort
-            // Need to find the operator and save the arguments
-            args.next = mem_cdr;
-            val.next  = 0;
-            read_mem(mem_car, lisp_defs::Apply);
+      lisp::Eval: begin
+        unique case (tag_reg.current)
+          lisp::TYPE_NUMBER: begin
+            val.next = val_reg.current;
+            state.next = lisp::Halt;
           end
 
           default: send_error(EVAL_ERROR);
         endcase
       end
 
-      // Determines what kind of thing the memory response is, and what to do
-      // with it. Differs from Eval, in that we don't set val = 0. Supposed to
-      // be for evaluating arguments of some root operator. However, I'm not
-      // 100% sold on this as it seems like we may be able to reuse other
-      // functionality instead of having new states.
-      //
-      // WARNING: We have no checking going on for this. So it can literally
-      // only evaluate (+ number number number number ...). Any other input
-      // will bork the system.
-      lisp_defs::EvalArgs: begin
-        case (mem_header)
-          lisp_defs::TYPE_CONS: begin
-            args.next = mem_cdr;
-            read_mem(mem_car, lisp_defs::ApplyArgs);
-          end
-        endcase
-      end
+      lisp::Halt: leds = LED_HALT;
 
-      // Takes a function and a list of evaluated args and applies the
-      // function to those arguments
-      lisp_defs::Apply: begin
-        case (mem_header)
-          lisp_defs::TYPE_PRIMITIVE: begin
-            // Save the primop code in expression for now. Will probably need
-            // to change once we get recursive evaluation going.
-            proc.next = mem_car;
-            read_mem(args.current, lisp_defs::EvalArgs);
-          end
-
-          default: send_error(APPLY_ERROR);
-        endcase
-      end
-
-      // Using the latched top-level function, determine what to do with the
-      // data. For example, if the top-level funciton is an add, then we want
-      // to add val (which is acting as an accumulator) and the car of the
-      // memory response (which we are assuming to be a number, and thus the
-      // car holds the data).
-      //
-      // Once we do the prodecure, then we go back to EvalArgs, but this time
-      // with the next argument in the list, which is set in EvalArgs.
-      //
-      // Finally, when we see that the arg is nil, we know we have reached the
-      // end of the list, and go to halt.
-      lisp_defs::ApplyArgs: begin
-        case (proc.current)
-          lisp_defs::PRIMOP_ADD: begin
-            val.next = val.current + mem_car;
-            if (args.current == lisp_defs::NIL) begin
-              state.next = lisp_defs::Halt;
-            end else begin
-              read_mem(args.current, lisp_defs::EvalArgs);
-            end
-          end
-        endcase
-      end
-
-      lisp_defs::Halt: leds = LED_HALT;
-
-      lisp_defs::Error: begin
+      lisp::Error: begin
         leds = LED_ERROR;
-        state.next = lisp_defs::Error;
+        state.next = lisp::Error;
       end
 
       default: send_error(STATE_ERROR);
@@ -245,28 +346,16 @@ module core (
   //────────────────────────────────────────────────────────────
   always_ff @(posedge clk) begin
     if (rst) begin
-      state.current    <= lisp_defs::SelectExpr;
-      state.after_read <= lisp_defs::SelectExpr;
-      expr.current     <= lisp_defs::NIL;
-      proc.current     <= lisp_defs::NIL;
-      val.current      <= lisp_defs::NIL;
-      args.current     <= lisp_defs::NIL;
-
-      error_code_reg   <= 4'h0;
+      state.current <= lisp::Boot;
+      val.current   <= 'h0;
+      expr.current  <= 'h0;
     end else begin
       state.current <= state.next;
-      expr.current  <= expr.next;
-      proc.current  <= proc.next;
       val.current   <= val.next;
-      args.current  <= args.next;
+      expr.current  <= expr.next;
 
       if (entering_error_state) begin
         error_code_reg <= error_code; //Latch the error
-      end
-
-      if (memory_read.active) begin
-        memory_addr_latched <= memory_read.addr;
-        state.after_read    <= memory_read.continue_state;
       end
     end
   end
