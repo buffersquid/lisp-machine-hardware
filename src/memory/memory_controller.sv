@@ -24,7 +24,6 @@ module memory_controller #(
   //────────────────────────────────────────────────────────────
   typedef enum {
     FETCH_ROM,
-    FETCH_ROM_WAIT,
     WRITE_RAM,
     RUNNING,
     ERROR
@@ -86,7 +85,10 @@ module memory_controller #(
     memory_error = 1'b0;
 
     case (state)
-      FETCH_ROM: next_state = WRITE_RAM;
+      FETCH_ROM: begin
+        ram_addr_internal = boot_addr;
+        next_state = WRITE_RAM;
+      end
 
       WRITE_RAM: begin
         ram_write_enable_internal = 1'b1;
@@ -101,7 +103,6 @@ module memory_controller #(
       end
 
       RUNNING: begin
-
         // Pass external RAM interface to internal since now all memory
         // actions will be RAM based
         boot_done = 1'b1;
