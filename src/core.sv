@@ -16,7 +16,7 @@ module core (
   // Types
   //────────────────────────────────────────────────────────────
   // Error codes
-  typedef enum {
+  typedef enum logic [3:0] {
     NO_ERR,
     STATE_ERROR,
     FETCH_ERROR,
