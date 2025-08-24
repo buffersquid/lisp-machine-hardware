@@ -16,19 +16,22 @@ module core (
   // Types
   //────────────────────────────────────────────────────────────
   // Error codes
-  localparam logic [ 3:0] STATE_ERROR = 4'h0;
-  localparam logic [ 3:0] FETCH_ERROR = 4'h1;
-  localparam logic [ 3:0] EVAL_ERROR  = 4'h2;
-  localparam logic [ 3:0] APPLY_ERROR = 4'h3;
+  typedef enum {
+    NO_ERR,
+    STATE_ERROR,
+    FETCH_ERROR,
+    EVAL_ERROR,
+    APPLY_ERROR
+  } error_code_e;
   localparam logic [15:0] LED_ERROR   = 16'hFFFF;
   localparam logic [15:0] LED_HALT    = 16'h0001;
-  logic [3:0]  error_code, error_code_reg;
+  error_code_e  error_code, error_code_reg;
 
   //────────────────────────────────────────────────────────────
   // Functions & Tasks
   //────────────────────────────────────────────────────────────
   task automatic send_error(
-    input logic [3:0] error
+    input error_code_e error
   );
   begin
     error_code = error;
@@ -108,7 +111,7 @@ module core (
   reg_t val_reg;
   reg_t car_reg;
   reg_t cdr_reg;
-  reg_t func_expr_reg;
+  reg_t func_body_reg;
   reg_t func_args_reg;
   reg_t func_env_reg;
 
@@ -118,7 +121,7 @@ module core (
     val_reg.next       = val_reg.current;
     car_reg.next       = car_reg.current;
     cdr_reg.next       = cdr_reg.current;
-    func_expr_reg.next = func_expr_reg.current;
+    func_body_reg.next = func_body_reg.current;
     func_args_reg.next = func_args_reg.current;
     func_env_reg.next  = func_env_reg.current;
 
@@ -184,7 +187,7 @@ module core (
 
       FETCH_FUNC_BODY_REQ: fetch_state.next = FETCH_FUNC_BODY_STORE;
       FETCH_FUNC_BODY_STORE: begin
-        func_expr_reg.next = read_data;
+        func_body_reg.next = read_data;
         if (tag_reg.current == lisp::TYPE_FUNC_PRIM) begin
           fetch_state.next = FETCH_DONE;
         end else begin
@@ -229,7 +232,7 @@ module core (
       val_reg.current       <= 'h0;
       car_reg.current       <= 'h0;
       cdr_reg.current       <= 'h0;
-      func_expr_reg.current <= 'h0;
+      func_body_reg.current <= 'h0;
       func_args_reg.current <= 'h0;
       func_env_reg.current  <= 'h0;
     end else begin
@@ -238,7 +241,7 @@ module core (
       val_reg.current       <= val_reg.next;
       car_reg.current       <= car_reg.next;
       cdr_reg.current       <= cdr_reg.next;
-      func_expr_reg.current <= func_expr_reg.next;
+      func_body_reg.current <= func_body_reg.next;
       func_args_reg.current <= func_args_reg.next;
       func_env_reg.current  <= func_env_reg.next;
 
@@ -285,9 +288,7 @@ module core (
     write_data = 'h0;
 
     leds = 16'b0000;
-    // Tehnically, this is a STATE ERROR, but it doesn't really matter if we
-    // don't get into the error state.
-    error_code = 4'h0;
+    error_code = NO_ERR;
 
     unique case (state.current)
 
