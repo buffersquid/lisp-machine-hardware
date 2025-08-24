@@ -57,8 +57,8 @@ we have small word size, I'm tempted by dynamic, since header space is limited.
 #### Functions
 ```
 [type_function]
-[pointer to parameter list (cons list)]
 [pointer to body expression (cons list)]
+[pointer to parameter list (cons list)]
 [closure env pointer (cons list)] # Probably ignoring this for now
 ```
 
@@ -73,8 +73,8 @@ we have small word size, I'm tempted by dynamic, since header space is limited.
 ##### Lambda
 ```
 [type_function - subtype_lambda]
-[pointer to parameter list (cons list)]
 [pointer to body expression (cons list)]
+[pointer to parameter list (cons list)]
 [nil] # No captured lexical env for simple lambda
 ```
 Example:
@@ -92,8 +92,8 @@ Example:
 ##### Closure (lambda with lexical env)
 ```
 [type_function - subtype_closure]
-[pointer to parameter list (cons list)]
 [pointer to body expression (cons list)]
+[pointer to parameter list (cons list)]
 [pointer to captured env]
 ```
 Example:

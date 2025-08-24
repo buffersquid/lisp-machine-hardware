@@ -117,7 +117,7 @@ module core_sim();
     memory['hE]  = lisp::TYPE_CONS;
     memory['hF]  = 8'h4;
     memory['h10] = 8'hB;
-    run_expr_via_button(16'h0000, memory, 8'h05);
+    run_expr_via_button(8'h00, memory, 8'h05);
 
     $display("✅ All tests passed!");
     $finish;

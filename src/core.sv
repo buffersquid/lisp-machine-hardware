@@ -80,10 +80,16 @@ module core (
     FETCH_TAG_STORE,
     FETCH_VAL_REQ,
     FETCH_VAL_STORE,
-    FETCH_CAR_REQ,
-    FETCH_CAR_STORE,
-    FETCH_CDR_REQ,
-    FETCH_CDR_STORE,
+    FETCH_CONS_CAR_REQ,
+    FETCH_CONS_CAR_STORE,
+    FETCH_CONS_CDR_REQ,
+    FETCH_CONS_CDR_STORE,
+    FETCH_FUNC_EXPR_REQ,
+    FETCH_FUNC_EXPR_STORE,
+    FETCH_FUNC_ARGS_REQ,
+    FETCH_FUNC_ARGS_STORE,
+    FETCH_FUNC_ENV_REQ,
+    FETCH_FUNC_ENV_STORE,
     FETCH_DONE,
     FETCH_ERR
   } fetch_state_t;
@@ -97,13 +103,19 @@ module core (
   reg_t val_reg;
   reg_t car_reg;
   reg_t cdr_reg;
+  reg_t func_expr_reg;
+  reg_t func_args_reg;
+  reg_t func_env_reg;
 
   always_comb begin
-    fetch_state.next = fetch_state.current;
-    tag_reg.next     = tag_reg.current;
-    val_reg.next     = val_reg.current;
-    car_reg.next     = car_reg.current;
-    cdr_reg.next     = cdr_reg.current;
+    fetch_state.next   = fetch_state.current;
+    tag_reg.next       = tag_reg.current;
+    val_reg.next       = val_reg.current;
+    car_reg.next       = car_reg.current;
+    cdr_reg.next       = cdr_reg.current;
+    func_expr_reg.next = func_expr_reg.current;
+    func_args_reg.next = func_args_reg.current;
+    func_env_reg.next  = func_env_reg.current;
 
     active_read = 1'b0;
     addr_in     = '0;
@@ -132,7 +144,13 @@ module core (
           lisp::TYPE_CONS: begin
             addr_in = expr.current + 1;
             active_read = 1'b1;
-            fetch_state.next = FETCH_CAR_REQ;
+            fetch_state.next = FETCH_CONS_CAR_REQ;
+          end
+
+          lisp::TYPE_FUNC_PRIM: begin
+            addr_in = expr.current + 1;
+            active_read = 1'b1;
+            fetch_state.next = FETCH_FUNC_EXPR_REQ;
           end
 
           default: fetch_state.next = FETCH_ERR;
@@ -145,17 +163,39 @@ module core (
         fetch_state.next = FETCH_DONE;
       end
 
-      FETCH_CAR_REQ: fetch_state.next = FETCH_CAR_STORE;
-      FETCH_CAR_STORE: begin
+      FETCH_CONS_CAR_REQ: fetch_state.next = FETCH_CONS_CAR_STORE;
+      FETCH_CONS_CAR_STORE: begin
         car_reg.next = read_data;
         addr_in = expr.current + 2;
         active_read = 1'b1;
-        fetch_state.next = FETCH_CDR_REQ;
+        fetch_state.next = FETCH_CONS_CDR_REQ;
       end
 
-      FETCH_CDR_REQ: fetch_state.next = FETCH_CDR_STORE;
-      FETCH_CDR_STORE: begin
+      FETCH_CONS_CDR_REQ: fetch_state.next = FETCH_CONS_CDR_STORE;
+      FETCH_CONS_CDR_STORE: begin
         cdr_reg.next = read_data;
+        fetch_state.next = FETCH_DONE;
+      end
+
+      FETCH_FUNC_EXPR_REQ: fetch_state.next = FETCH_FUNC_EXPR_STORE;
+      FETCH_FUNC_EXPR_STORE: begin
+        func_expr_reg.next = read_data;
+        addr_in = expr.current + 2;
+        active_read = 1'b1;
+        fetch_state.next = FETCH_FUNC_ARGS_REQ;
+      end
+
+      FETCH_FUNC_ARGS_REQ: fetch_state.next = FETCH_FUNC_ARGS_STORE;
+      FETCH_FUNC_ARGS_STORE: begin
+        func_args_reg.next = read_data;
+        addr_in = expr.current + 3;
+        active_read = 1'b1;
+        fetch_state.next = FETCH_FUNC_ENV_REQ;
+      end
+
+      FETCH_FUNC_ENV_REQ: fetch_state.next = FETCH_FUNC_ENV_STORE;
+      FETCH_FUNC_ENV_STORE: begin
+        func_env_reg.next = read_data;
         fetch_state.next = FETCH_DONE;
       end
 
@@ -172,17 +212,23 @@ module core (
 
   always_ff @(posedge clk) begin
     if (rst) begin
-      fetch_state.current <= FETCH_IDLE;
-      tag_reg.current     <= 'h0;
-      val_reg.current     <= 'h0;
-      car_reg.current     <= 'h0;
-      cdr_reg.current     <= 'h0;
+      fetch_state.current   <= FETCH_IDLE;
+      tag_reg.current       <= 'h0;
+      val_reg.current       <= 'h0;
+      car_reg.current       <= 'h0;
+      cdr_reg.current       <= 'h0;
+      func_expr_reg.current <= 'h0;
+      func_args_reg.current <= 'h0;
+      func_env_reg.current  <= 'h0;
     end else begin
-      fetch_state.current <= fetch_state.next;
-      tag_reg.current     <= tag_reg.next;
-      val_reg.current     <= val_reg.next;
-      car_reg.current     <= car_reg.next;
-      cdr_reg.current     <= cdr_reg.next;
+      fetch_state.current   <= fetch_state.next;
+      tag_reg.current       <= tag_reg.next;
+      val_reg.current       <= val_reg.next;
+      car_reg.current       <= car_reg.next;
+      cdr_reg.current       <= cdr_reg.next;
+      func_expr_reg.current <= func_expr_reg.next;
+      func_args_reg.current <= func_args_reg.next;
+      func_env_reg.current  <= func_env_reg.next;
 
       if (active_read) begin
         addr_in_latch <= addr_in;
