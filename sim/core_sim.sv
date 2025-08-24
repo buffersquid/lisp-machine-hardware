@@ -90,8 +90,6 @@ module core_sim();
   initial begin
     logic [lisp::data_width-1:0] memory[MemorySize];
     clear_memory(memory);
-    // memory['h0] = lisp::TYPE_NUMBER;
-    // memory['h1] = 8'h2A;
     memory['h0] = lisp::TYPE_NUMBER;
     memory['h1] = 8'h05;
     memory['h2] = lisp::TYPE_NUMBER;

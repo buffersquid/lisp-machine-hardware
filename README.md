@@ -85,8 +85,8 @@ Example:
 0x30 = cons('+', cons('x', cons('y', NIL))) = body
 
 [0x40] = [type_function - subtype_lambda]
-[0x41] = 0x20   ; -> param list: (x y)
-[0x42] = 0x30   ; -> body: (+ x y)
+[0x41] = 0x30   ; -> body: (+ x y)
+[0x42] = 0x20   ; -> param list: (x y)
 [0x43] = NIL    ; -> no captured environment
 ```
 ##### Closure (lambda with lexical env)
@@ -117,8 +117,8 @@ This creates a closure with:
 0x51 = cons(cons('n', 5), NIL)
 
 [0x40] = [type_function - subtype_closure]
-[0x41] = 0x20   ; -> param list: (x)
-[0x42] = 0x30   ; -> body: (+ x n)
+[0x41] = 0x30   ; -> body: (+ x n)
+[0x42] = 0x20   ; -> param list: (x)
 [0x43] = 0x51   ; -> pointer to captures env: ((n . 5))
 
 ```

@@ -43,8 +43,13 @@ module core (
     logic [lisp::data_width-1:0] current;
     logic [lisp::data_width-1:0] next;
   } reg_t;
-  reg_t expr;
   reg_t val;
+
+  typedef struct packed {
+    logic [lisp::addr_width-1:0] current;
+    logic [lisp::addr_width-1:0] next;
+  } areg_t;
+  areg_t expr;
 
   //────────────────────────────────────────────────────────────
   // Memory
@@ -84,8 +89,8 @@ module core (
     FETCH_CONS_CAR_STORE,
     FETCH_CONS_CDR_REQ,
     FETCH_CONS_CDR_STORE,
-    FETCH_FUNC_EXPR_REQ,
-    FETCH_FUNC_EXPR_STORE,
+    FETCH_FUNC_BODY_REQ,
+    FETCH_FUNC_BODY_STORE,
     FETCH_FUNC_ARGS_REQ,
     FETCH_FUNC_ARGS_STORE,
     FETCH_FUNC_ENV_REQ,
@@ -122,7 +127,7 @@ module core (
     fetch_done  = 1'b0;
     fetch_error = 1'b0;
 
-    case (fetch_state.current)
+    unique case (fetch_state.current)
       FETCH_IDLE: begin
         if (start_fetch) begin
           addr_in = expr.current;
@@ -134,7 +139,7 @@ module core (
       FETCH_TAG_REQ: fetch_state.next = FETCH_TAG_STORE;
       FETCH_TAG_STORE: begin
         tag_reg.next = read_data;
-        case (read_data)
+        unique case (read_data)
           lisp::TYPE_NUMBER: begin
             addr_in = expr.current + 1;
             active_read = 1'b1;
@@ -150,7 +155,7 @@ module core (
           lisp::TYPE_FUNC_PRIM: begin
             addr_in = expr.current + 1;
             active_read = 1'b1;
-            fetch_state.next = FETCH_FUNC_EXPR_REQ;
+            fetch_state.next = FETCH_FUNC_BODY_REQ;
           end
 
           default: fetch_state.next = FETCH_ERR;
@@ -177,12 +182,16 @@ module core (
         fetch_state.next = FETCH_DONE;
       end
 
-      FETCH_FUNC_EXPR_REQ: fetch_state.next = FETCH_FUNC_EXPR_STORE;
-      FETCH_FUNC_EXPR_STORE: begin
+      FETCH_FUNC_BODY_REQ: fetch_state.next = FETCH_FUNC_BODY_STORE;
+      FETCH_FUNC_BODY_STORE: begin
         func_expr_reg.next = read_data;
-        addr_in = expr.current + 2;
-        active_read = 1'b1;
-        fetch_state.next = FETCH_FUNC_ARGS_REQ;
+        if (tag_reg.current == lisp::TYPE_FUNC_PRIM) begin
+          fetch_state.next = FETCH_DONE;
+        end else begin
+          addr_in = expr.current + 2;
+          active_read = 1'b1;
+          fetch_state.next = FETCH_FUNC_ARGS_REQ;
+        end
       end
 
       FETCH_FUNC_ARGS_REQ: fetch_state.next = FETCH_FUNC_ARGS_STORE;
@@ -204,7 +213,10 @@ module core (
         fetch_state.next = FETCH_IDLE;
       end
 
-      FETCH_ERR: fetch_error = 1'b1;
+      FETCH_ERR: begin
+        fetch_error = 1'b1;
+        fetch_state.next = FETCH_ERR;
+      end
 
       default: fetch_state.next = FETCH_ERR;
     endcase
@@ -237,6 +249,19 @@ module core (
   end
 
   //────────────────────────────────────────────────────────────
+  // Combinational FSM Logic
+  //────────────────────────────────────────────────────────────
+  struct packed {
+    lisp::state_t current;
+    lisp::state_t next;
+  } state;
+
+  logic go_pressed, go_prev;
+
+  logic entering_error_state;
+  assign entering_error_state = (state.current != lisp::Error) && (state.next == lisp::Error);
+
+  //────────────────────────────────────────────────────────────
   // Seven-segment display
   //────────────────────────────────────────────────────────────
   logic [15:0] display_value;
@@ -250,32 +275,21 @@ module core (
     .anodes(anodes)
   );
 
-  //────────────────────────────────────────────────────────────
-  // Combinational FSM Logic
-  //────────────────────────────────────────────────────────────
-  struct packed {
-    lisp::state_t current;
-    lisp::state_t next;
-  } state;
-
-  logic go_pressed, go_prev;
-
-  logic entering_error_state;
-  assign entering_error_state = (state.current != lisp::Error) && (state.next == lisp::Error);
-
   always_comb begin
     state.next = state.current;
     expr.next  = expr.current;
     val.next   = val.current;
 
     start_fetch = 1'b0;
+    write_enable = 1'b0;
+    write_data = 'h0;
 
     leds = 16'b0000;
     // Tehnically, this is a STATE ERROR, but it doesn't really matter if we
     // don't get into the error state.
     error_code = 4'h0;
 
-    case (state.current)
+    unique case (state.current)
 
       lisp::Boot: begin
         if (boot_done) state.next = lisp::SelectExpr;
@@ -296,7 +310,7 @@ module core (
       end
 
       lisp::MemWait: begin
-        if (fetch_error | mem_error) begin
+        if (fetch_error || mem_error) begin
           send_error(FETCH_ERROR);
         end else if (fetch_done) begin
           state.next = lisp::Eval;
@@ -305,7 +319,7 @@ module core (
 
       // Determines what kind of thing the expr is, and what to do with it
       lisp::Eval: begin
-        case (tag_reg.current)
+        unique case (tag_reg.current)
           lisp::TYPE_NUMBER: begin
             val.next = val_reg.current;
             state.next = lisp::Halt;
@@ -332,7 +346,7 @@ module core (
   always_ff @(posedge clk) begin
     if (rst) begin
       state.current <= lisp::Boot;
-      val.current   <= lisp::Boot;
+      val.current   <= 'h0;
       expr.current  <= 'h0;
     end else begin
       state.current <= state.next;
