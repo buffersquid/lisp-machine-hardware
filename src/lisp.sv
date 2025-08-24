@@ -23,7 +23,9 @@ package lisp;
   } header_t;
 
   typedef enum logic [data_width-1:0] {
-    TYPE_PRIM_ADD
+    TYPE_PRIM_CONS,
+    TYPE_PRIM_CAR,
+    TYPE_PRIM_CDR
   } primitive_t;
 
   localparam NIL = 8'h0;

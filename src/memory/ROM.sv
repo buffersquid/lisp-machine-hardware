@@ -16,32 +16,47 @@ module ROM #(
 
   initial begin
     rom['h0] = lisp::TYPE_NUMBER;
-    rom['h1] = 8'h05;
+    rom['h1] = 8'h12;
     rom['h2] = lisp::TYPE_NUMBER;
-    rom['h3] = 8'h03;
-    // + primitive
+    rom['h3] = 8'h34;
+
+    // cons primitive
     rom['h4] = lisp::TYPE_FUNC_PRIM;
-    rom['h5] = lisp::TYPE_PRIM_ADD;
+    rom['h5] = lisp::TYPE_PRIM_CONS;
     rom['h6] = lisp::NIL;
     rom['h7] = lisp::NIL;
 
-    // expr: (+ 5 3) = (+ (5 (3 NIL)))
-    // (CONS 3 NIL)
+    // (cons 12 34) = (cons . (12 . (34 . NIL)))
+    // (CONS 34 NIL)
     rom['h8] = lisp::TYPE_CONS;
-    rom['h9] = 8'h3;
+    rom['h9] = 'h2;
     rom['hA] = lisp::NIL;
 
-    // (CONS 5 (CONS 3 NIL))
+    // (CONS 12 (CONS 34 NIL))
     rom['hB] = lisp::TYPE_CONS;
-    rom['hC] = 8'h1;
-    rom['hD] = 8'h8;
+    rom['hC] = 'h0;
+    rom['hD] = 'h8;
 
-    // (CONS + (CONS 5 (CONS 3 NIL)))
+    // (CONS cons-primitive (CONS 12 (CONS 34 NIL)))
     rom['hE]  = lisp::TYPE_CONS;
-    rom['hF]  = 8'h4;
-    rom['h10] = 8'hB;
+    rom['hF]  = 'h4;
+    rom['h10] = 'hB;
 
-    // Expr = 8'hE
+    // car primitive
+    rom['h11] = lisp::TYPE_FUNC_PRIM;
+    rom['h12] = lisp::TYPE_PRIM_CAR;
+    rom['h13] = lisp::NIL;
+    rom['h14] = lisp::NIL;
+
+    // (CONS (cons 12 34) NIL)
+    rom['h15] = lisp::TYPE_CONS;
+    rom['h16] = 'hE;
+    rom['h17] = lisp::NIL;
+
+    // (CONS car-primitive (CONS (cons 12 34) NIL))
+    rom['h18] = lisp::TYPE_CONS;
+    rom['h19] = 'h11;
+    rom['h1A] = 'h15;
   end
 
   always_ff @(posedge clk) begin
