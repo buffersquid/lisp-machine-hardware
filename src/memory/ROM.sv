@@ -15,48 +15,50 @@ module ROM #(
   reg [DATA_WIDTH-1:0] rom [0:(1 << ADDR_WIDTH)-1];
 
   initial begin
-    rom['h0] = lisp::TYPE_NUMBER;
-    rom['h1] = 8'h12;
-    rom['h2] = lisp::TYPE_NUMBER;
-    rom['h3] = 8'h34;
+    rom['h0] = lisp::NIL;
+
+    rom['h1] = lisp::TYPE_NUMBER;
+    rom['h2] = 8'h12;
+    rom['h3] = lisp::TYPE_NUMBER;
+    rom['h4] = 8'h34;
 
     // cons primitive
-    rom['h4] = lisp::TYPE_FUNC_PRIM;
-    rom['h5] = lisp::TYPE_PRIM_CONS;
-    rom['h6] = lisp::NIL;
+    rom['h5] = lisp::TYPE_FUNC_PRIM;
+    rom['h6] = lisp::TYPE_PRIM_CONS;
     rom['h7] = lisp::NIL;
+    rom['h8] = lisp::NIL;
 
     // (cons 12 34) = (cons . (12 . (34 . NIL)))
     // (CONS 34 NIL)
-    rom['h8] = lisp::TYPE_CONS;
-    rom['h9] = 'h2;
-    rom['hA] = lisp::NIL;
+    rom['h9] = lisp::TYPE_CONS;
+    rom['hA] = 'h2;
+    rom['hB] = lisp::NIL;
 
     // (CONS 12 (CONS 34 NIL))
-    rom['hB] = lisp::TYPE_CONS;
-    rom['hC] = 'h0;
-    rom['hD] = 'h8;
+    rom['hC] = lisp::TYPE_CONS;
+    rom['hD] = 'h0;
+    rom['hE] = 'h8;
 
     // (CONS cons-primitive (CONS 12 (CONS 34 NIL)))
-    rom['hE]  = lisp::TYPE_CONS;
-    rom['hF]  = 'h4;
-    rom['h10] = 'hB;
+    rom['hF]  = lisp::TYPE_CONS;
+    rom['h10]  = 'h4;
+    rom['h11] = 'hB;
 
     // car primitive
-    rom['h11] = lisp::TYPE_FUNC_PRIM;
-    rom['h12] = lisp::TYPE_PRIM_CAR;
-    rom['h13] = lisp::NIL;
+    rom['h12] = lisp::TYPE_FUNC_PRIM;
+    rom['h13] = lisp::TYPE_PRIM_CAR;
     rom['h14] = lisp::NIL;
+    rom['h15] = lisp::NIL;
 
     // (CONS (cons 12 34) NIL)
-    rom['h15] = lisp::TYPE_CONS;
-    rom['h16] = 'hE;
-    rom['h17] = lisp::NIL;
+    rom['h16] = lisp::TYPE_CONS;
+    rom['h17] = 'hE;
+    rom['h18] = lisp::NIL;
 
     // (CONS car-primitive (CONS (cons 12 34) NIL))
-    rom['h18] = lisp::TYPE_CONS;
-    rom['h19] = 'h11;
-    rom['h1A] = 'h15;
+    rom['h19] = lisp::TYPE_CONS;
+    rom['h1A] = 'h11;
+    rom['h1B] = 'h15;
   end
 
   always_ff @(posedge clk) begin
