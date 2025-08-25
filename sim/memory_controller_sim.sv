@@ -11,7 +11,7 @@ module memory_controller_sim();
   logic clk = 0;
   logic rst;
   logic boot_done;
-  logic write_enable;
+  logic write_enable, read_enable;
   logic [addrWidth-1:0] addr;
   logic [dataWidth-1:0] write_data;
   logic [dataWidth-1:0] read_data;
@@ -26,6 +26,7 @@ module memory_controller_sim();
     .rst(rst),
     .boot_done(boot_done),
     .write_enable(write_enable),
+    .read_enable(read_enable),
     .addr(addr),
     .write_data(write_data),
     .read_data(read_data)
@@ -60,6 +61,7 @@ module memory_controller_sim();
         m0.ram.ram[i] = mem_values[i];
       end
 
+      read_enable = 1'b1;
       addr = address;
       @(posedge clk);
       @(posedge clk);

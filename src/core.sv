@@ -19,6 +19,7 @@ module core (
   typedef enum logic [3:0] {
     NO_ERR,
     STATE_ERROR,
+    MEM_ERROR,
     FETCH_ERROR,
     EVAL_ERROR,
     APPLY_ERROR
@@ -61,27 +62,15 @@ module core (
   logic start_fetch, fetch_done, fetch_error, mem_error;
 
   logic active_read, boot_done, write_enable;
-  logic [lisp::addr_width-1:0] addr_in_latch;
+  logic [lisp::addr_width-1:0] addr_fetch;
   // Inputs
-  logic [lisp::addr_width-1:0] addr_in;
   logic [lisp::data_width-1:0] write_data;
   // Outputs
   logic [lisp::data_width-1:0] read_data;
 
-  memory_controller #(
-    .ADDR_WIDTH(lisp::addr_width),
-    .DATA_WIDTH(lisp::data_width)
-  ) mem (
-    .clk(clk),
-    .rst(rst),
-    .boot_done(boot_done),
-    .addr(addr_in_latch),
-    .write_enable(write_enable),
-    .write_data(write_data),
-    .read_data(read_data),
-    .memory_error(mem_error)
-  );
-
+  //────────────────────────────────────────────────────────────
+  // Memory FETCH FSM Logic
+  //────────────────────────────────────────────────────────────
   typedef enum {
     FETCH_IDLE,
     FETCH_TAG_REQ,
@@ -126,14 +115,14 @@ module core (
     func_env_reg.next  = func_env_reg.current;
 
     active_read = 1'b0;
-    addr_in     = '0;
+    addr_fetch     = '0;
     fetch_done  = 1'b0;
     fetch_error = 1'b0;
 
     unique case (fetch_state.current)
       FETCH_IDLE: begin
         if (start_fetch) begin
-          addr_in = expr.current;
+          addr_fetch = expr.current;
           active_read = 1'b1;
           fetch_state.next = FETCH_TAG_REQ;
         end
@@ -144,19 +133,19 @@ module core (
         tag_reg.next = read_data;
         unique case (read_data)
           lisp::TYPE_NUMBER: begin
-            addr_in = expr.current + 1;
+            addr_fetch = expr.current + 1;
             active_read = 1'b1;
             fetch_state.next = FETCH_VAL_REQ;
           end
 
           lisp::TYPE_CONS: begin
-            addr_in = expr.current + 1;
+            addr_fetch = expr.current + 1;
             active_read = 1'b1;
             fetch_state.next = FETCH_CONS_CAR_REQ;
           end
 
           lisp::TYPE_FUNC_PRIM: begin
-            addr_in = expr.current + 1;
+            addr_fetch = expr.current + 1;
             active_read = 1'b1;
             fetch_state.next = FETCH_FUNC_BODY_REQ;
           end
@@ -174,7 +163,7 @@ module core (
       FETCH_CONS_CAR_REQ: fetch_state.next = FETCH_CONS_CAR_STORE;
       FETCH_CONS_CAR_STORE: begin
         car_reg.next = read_data;
-        addr_in = expr.current + 2;
+        addr_fetch = expr.current + 2;
         active_read = 1'b1;
         fetch_state.next = FETCH_CONS_CDR_REQ;
       end
@@ -191,7 +180,7 @@ module core (
         if (tag_reg.current == lisp::TYPE_FUNC_PRIM) begin
           fetch_state.next = FETCH_DONE;
         end else begin
-          addr_in = expr.current + 2;
+          addr_fetch = expr.current + 2;
           active_read = 1'b1;
           fetch_state.next = FETCH_FUNC_ARGS_REQ;
         end
@@ -200,7 +189,7 @@ module core (
       FETCH_FUNC_ARGS_REQ: fetch_state.next = FETCH_FUNC_ARGS_STORE;
       FETCH_FUNC_ARGS_STORE: begin
         func_args_reg.next = read_data;
-        addr_in = expr.current + 3;
+        addr_fetch = expr.current + 3;
         active_read = 1'b1;
         fetch_state.next = FETCH_FUNC_ENV_REQ;
       end
@@ -244,12 +233,29 @@ module core (
       func_body_reg.current <= func_body_reg.next;
       func_args_reg.current <= func_args_reg.next;
       func_env_reg.current  <= func_env_reg.next;
-
-      if (active_read) begin
-        addr_in_latch <= addr_in;
-      end
     end
   end
+
+  logic [lisp::addr_width-1:0] addr_in;
+  always_comb begin
+    if (active_read) addr_in = addr_fetch;
+    else addr_in = '0;
+  end
+
+  memory_controller #(
+    .ADDR_WIDTH(lisp::addr_width),
+    .DATA_WIDTH(lisp::data_width)
+  ) mem (
+    .clk(clk),
+    .rst(rst),
+    .boot_done(boot_done),
+    .addr(addr_in),
+    .write_enable(write_enable),
+    .read_enable(active_read),
+    .write_data(write_data),
+    .read_data(read_data),
+    .memory_error(mem_error)
+  );
 
   //────────────────────────────────────────────────────────────
   // Combinational FSM Logic
@@ -311,8 +317,10 @@ module core (
       end
 
       lisp::MemWait: begin
-        if (fetch_error || mem_error) begin
+        if (fetch_error) begin
           send_error(FETCH_ERROR);
+        end else if (mem_error) begin
+          send_error(MEM_ERROR);
         end else if (fetch_done) begin
           state.next = lisp::Eval;
         end

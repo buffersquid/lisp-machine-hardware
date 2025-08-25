@@ -90,32 +90,52 @@ module core_sim();
   initial begin
     logic [lisp::data_width-1:0] memory[MemorySize];
     clear_memory(memory);
-    memory['h0] = lisp::TYPE_NUMBER;
-    memory['h1] = 8'h05;
-    memory['h2] = lisp::TYPE_NUMBER;
-    memory['h3] = 8'h03;
-    // + primitive
-    memory['h4] = lisp::TYPE_FUNC_PRIM;
-    memory['h5] = lisp::TYPE_PRIM_ADD;
-    memory['h6] = lisp::NIL;
+    memory['h0] = lisp::NIL;
+
+    memory['h1] = lisp::TYPE_NUMBER;
+    memory['h2] = 8'h12;
+    memory['h3] = lisp::TYPE_NUMBER;
+    memory['h4] = 8'h34;
+
+    // cons primitive
+    memory['h5] = lisp::TYPE_FUNC_PRIM;
+    memory['h6] = lisp::TYPE_PRIM_CONS;
     memory['h7] = lisp::NIL;
+    memory['h8] = lisp::NIL;
 
-    // expr: (+ 5 3) = (+ (5 (3 NIL)))
-    // (CONS 3 NIL)
-    memory['h8] = lisp::TYPE_CONS;
-    memory['h9] = 8'h3;
-    memory['hA] = lisp::NIL;
+    // (cons 12 34) = (cons . (12 . (34 . NIL)))
+    // (CONS 34 NIL)
+    memory['h9] = lisp::TYPE_CONS;
+    memory['hA] = 'h2;
+    memory['hB] = lisp::NIL;
 
-    // (CONS 5 (CONS 3 NIL))
-    memory['hB] = lisp::TYPE_CONS;
-    memory['hC] = 8'h1;
-    memory['hD] = 8'h8;
+    // (CONS 12 (CONS 34 NIL))
+    memory['hC] = lisp::TYPE_CONS;
+    memory['hD] = 'h0;
+    memory['hE] = 'h8;
 
-    // (CONS + (CONS 5 (CONS 3 NIL)))
-    memory['hE]  = lisp::TYPE_CONS;
-    memory['hF]  = 8'h4;
-    memory['h10] = 8'hB;
-    run_expr_via_button(8'h00, memory, 8'h05);
+    // (CONS cons-primitive (CONS 12 (CONS 34 NIL)))
+    memory['hF]  = lisp::TYPE_CONS;
+    memory['h10]  = 'h4;
+    memory['h11] = 'hB;
+
+    // car primitive
+    memory['h12] = lisp::TYPE_FUNC_PRIM;
+    memory['h13] = lisp::TYPE_PRIM_CAR;
+    memory['h14] = lisp::NIL;
+    memory['h15] = lisp::NIL;
+
+    // (CONS (cons 12 34) NIL)
+    memory['h16] = lisp::TYPE_CONS;
+    memory['h17] = 'hE;
+    memory['h18] = lisp::NIL;
+
+    // (CONS car-primitive (CONS (cons 12 34) NIL))
+    memory['h19] = lisp::TYPE_CONS;
+    memory['h1A] = 'h11;
+    memory['h1B] = 'h15;
+
+    run_expr_via_button(8'h03, memory, 8'h34);
 
     $display("✅ All tests passed!");
     $finish;

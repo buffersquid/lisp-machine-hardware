@@ -16,12 +16,7 @@ module RAM #(
   reg [DATA_WIDTH-1:0] ram [0:(1 << ADDR_WIDTH)-1];
 
   always_ff @(posedge clk) begin
-    if (write_enable) begin
-      ram[addr] <= write_data;
-    end
-  end
-
-  always_ff @(posedge clk) begin
+    if (write_enable) ram[addr] <= write_data;
     read_data <= ram[addr];
   end
 endmodule
