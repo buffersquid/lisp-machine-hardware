@@ -61,7 +61,7 @@ module core (
   // Control signals
   logic start_fetch, fetch_done, fetch_error, mem_error;
 
-  logic active_read, boot_done, write_enable;
+  logic read_enable, boot_done, write_enable;
   logic [lisp::addr_width-1:0] addr_fetch;
   // Inputs
   logic [lisp::data_width-1:0] write_data;
@@ -114,8 +114,8 @@ module core (
     func_args_reg.next = func_args_reg.current;
     func_env_reg.next  = func_env_reg.current;
 
-    active_read = 1'b0;
-    addr_fetch     = '0;
+    read_enable = 1'b0;
+    addr_fetch  = '0;
     fetch_done  = 1'b0;
     fetch_error = 1'b0;
 
@@ -123,7 +123,7 @@ module core (
       FETCH_IDLE: begin
         if (start_fetch) begin
           addr_fetch = expr.current;
-          active_read = 1'b1;
+          read_enable = 1'b1;
           fetch_state.next = FETCH_TAG_REQ;
         end
       end
@@ -131,26 +131,13 @@ module core (
       FETCH_TAG_REQ: fetch_state.next = FETCH_TAG_STORE;
       FETCH_TAG_STORE: begin
         tag_reg.next = read_data;
+        addr_fetch = expr.current + 1;
+        read_enable = 1'b1;
         unique case (read_data)
-          lisp::TYPE_NUMBER: begin
-            addr_fetch = expr.current + 1;
-            active_read = 1'b1;
-            fetch_state.next = FETCH_VAL_REQ;
-          end
-
-          lisp::TYPE_CONS: begin
-            addr_fetch = expr.current + 1;
-            active_read = 1'b1;
-            fetch_state.next = FETCH_CONS_CAR_REQ;
-          end
-
-          lisp::TYPE_FUNC_PRIM: begin
-            addr_fetch = expr.current + 1;
-            active_read = 1'b1;
-            fetch_state.next = FETCH_FUNC_BODY_REQ;
-          end
-
-          default: fetch_state.next = FETCH_ERR;
+          lisp::TYPE_NUMBER:    fetch_state.next = FETCH_VAL_REQ;
+          lisp::TYPE_CONS:      fetch_state.next = FETCH_CONS_CAR_REQ;
+          lisp::TYPE_FUNC_PRIM: fetch_state.next = FETCH_FUNC_BODY_REQ;
+          default:              fetch_state.next = FETCH_ERR;
         endcase
       end
 
@@ -164,7 +151,7 @@ module core (
       FETCH_CONS_CAR_STORE: begin
         car_reg.next = read_data;
         addr_fetch = expr.current + 2;
-        active_read = 1'b1;
+        read_enable = 1'b1;
         fetch_state.next = FETCH_CONS_CDR_REQ;
       end
 
@@ -181,7 +168,7 @@ module core (
           fetch_state.next = FETCH_DONE;
         end else begin
           addr_fetch = expr.current + 2;
-          active_read = 1'b1;
+          read_enable = 1'b1;
           fetch_state.next = FETCH_FUNC_ARGS_REQ;
         end
       end
@@ -190,7 +177,7 @@ module core (
       FETCH_FUNC_ARGS_STORE: begin
         func_args_reg.next = read_data;
         addr_fetch = expr.current + 3;
-        active_read = 1'b1;
+        read_enable = 1'b1;
         fetch_state.next = FETCH_FUNC_ENV_REQ;
       end
 
@@ -238,7 +225,7 @@ module core (
 
   logic [lisp::addr_width-1:0] addr_in;
   always_comb begin
-    if (active_read) addr_in = addr_fetch;
+    if (read_enable) addr_in = addr_fetch;
     else addr_in = '0;
   end
 
@@ -250,8 +237,8 @@ module core (
     .rst(rst),
     .boot_done(boot_done),
     .addr(addr_in),
+    .read_enable(read_enable),
     .write_enable(write_enable),
-    .read_enable(active_read),
     .write_data(write_data),
     .read_data(read_data),
     .memory_error(mem_error)
