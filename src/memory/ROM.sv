@@ -31,18 +31,18 @@ module ROM #(
     // (cons 12 34) = (cons . (12 . (34 . NIL)))
     // (CONS 34 NIL)
     rom['h9] = lisp::TYPE_CONS;
-    rom['hA] = 'h2;
+    rom['hA] = 'h3;
     rom['hB] = lisp::NIL;
 
     // (CONS 12 (CONS 34 NIL))
     rom['hC] = lisp::TYPE_CONS;
-    rom['hD] = 'h0;
-    rom['hE] = 'h8;
+    rom['hD] = 'h1;
+    rom['hE] = 'h9;
 
     // (CONS cons-primitive (CONS 12 (CONS 34 NIL)))
     rom['hF]  = lisp::TYPE_CONS;
-    rom['h10]  = 'h4;
-    rom['h11] = 'hB;
+    rom['h10] = 'h5;
+    rom['h11] = 'hC;
 
     // car primitive
     rom['h12] = lisp::TYPE_FUNC_PRIM;
@@ -52,13 +52,13 @@ module ROM #(
 
     // (CONS (cons 12 34) NIL)
     rom['h16] = lisp::TYPE_CONS;
-    rom['h17] = 'hE;
+    rom['h17] = 'hF;
     rom['h18] = lisp::NIL;
 
     // (CONS car-primitive (CONS (cons 12 34) NIL))
     rom['h19] = lisp::TYPE_CONS;
-    rom['h1A] = 'h11;
-    rom['h1B] = 'h15;
+    rom['h1A] = 'h12;
+    rom['h1B] = 'h16;
   end
 
   always_ff @(posedge clk) begin

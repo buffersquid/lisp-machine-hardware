@@ -106,18 +106,18 @@ module core_sim();
     // (cons 12 34) = (cons . (12 . (34 . NIL)))
     // (CONS 34 NIL)
     memory['h9] = lisp::TYPE_CONS;
-    memory['hA] = 'h2;
+    memory['hA] = 'h3;
     memory['hB] = lisp::NIL;
 
     // (CONS 12 (CONS 34 NIL))
     memory['hC] = lisp::TYPE_CONS;
-    memory['hD] = 'h0;
-    memory['hE] = 'h8;
+    memory['hD] = 'h1;
+    memory['hE] = 'h9;
 
     // (CONS cons-primitive (CONS 12 (CONS 34 NIL)))
     memory['hF]  = lisp::TYPE_CONS;
-    memory['h10]  = 'h4;
-    memory['h11] = 'hB;
+    memory['h10] = 'h5;
+    memory['h11] = 'hC;
 
     // car primitive
     memory['h12] = lisp::TYPE_FUNC_PRIM;
@@ -127,15 +127,15 @@ module core_sim();
 
     // (CONS (cons 12 34) NIL)
     memory['h16] = lisp::TYPE_CONS;
-    memory['h17] = 'hE;
+    memory['h17] = 'hF;
     memory['h18] = lisp::NIL;
 
     // (CONS car-primitive (CONS (cons 12 34) NIL))
     memory['h19] = lisp::TYPE_CONS;
-    memory['h1A] = 'h11;
-    memory['h1B] = 'h15;
+    memory['h1A] = 'h12;
+    memory['h1B] = 'h16;
 
-    run_expr_via_button(8'h03, memory, 8'h34);
+    run_expr_via_button(8'h01, memory, 8'h34);
 
     $display("✅ All tests passed!");
     $finish;
