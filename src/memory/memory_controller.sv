@@ -1,3 +1,6 @@
+// Open question:
+// Why do I need to latch for reading, but not for writing?
+// Feels like some stinky code...
 `timescale 1ns / 1ps
 `default_nettype none
 
@@ -74,7 +77,7 @@ module memory_controller #(
       end
 
       if (state == RUNNING) begin
-        if (write_enable || read_enable) begin
+        if (read_enable) begin
           addr_latch <= addr;
         end
       end
@@ -114,7 +117,11 @@ module memory_controller #(
         // actions will be RAM based
         boot_done = 1'b1;
         ram_write_enable_internal = write_enable;
-        ram_addr_internal = addr_latch;
+        if (write_enable) begin
+          ram_addr_internal = addr;
+        end else begin
+          ram_addr_internal = addr_latch;
+        end
         ram_write_data_internal = write_data;
       end
 

@@ -19,7 +19,8 @@ package lisp;
   typedef enum logic [data_width-1:0] {
     TYPE_NUMBER,
     TYPE_CONS,
-    TYPE_FUNC_PRIM
+    TYPE_FUNC_PRIM,
+    TYPE_CLINK_HEADER
   } header_t;
 
   typedef enum logic [data_width-1:0] {

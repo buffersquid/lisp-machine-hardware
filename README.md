@@ -132,6 +132,49 @@ This creates a closure with:
 
 ---
 
+## Program Control:
+
+Ideally, we can reuse the cons system to handle control structures. This means that all memory can live in one block, with no arbitrary separations like typical memory segments.
+
+To do this, we will use something called a control link (CLINK). This is alternative to a typical control structure. In a nutshell, every time we recurse into a subexpression, we save all the registers to a CLINK frame, and set the CLINK pointer to the prev value.
+
+### CLINK in memory
+
+CLINK in memory is stored like:
+```lisp
+FRAME = (A . (B . (C . (D . (E . NIL)))))
+```
+With a memory architecture like:
+```
+typedef struct packed {
+    lisp::state_t return_state;
+    logic [lisp::addr_width-1:0] operator; // address of function
+    logic [lisp::addr_width-1:0] arg_ptr;  // address of arguments
+    logic [lisp::addr_width-1:0] prev_clink;
+} clink_frame_t;
+```
+
+So, everytime we are about to evaulate a function application like `(cons 1 2)`, or a subexpression like `(car (cons 1 2))`, we will need to:
+- Gather up our required data
+- Push this new frame to RAM
+- Update the `clink` register to the new clink frame, which gets returned by the memory module
+
+For example, when evaluating `(cons 12 34)`:
+- Set `expr = CAR(expr)`
+- Push CLINK:
+  - `return_state = Eval` or whatever you want to return to
+  - `operator = CONS`
+  - `arg_ptr = pointer to CDR(expr)`
+  - `prev_clink = clink.current`
+
+After finishing the subexpression:
+- Read the top CLINK frame
+- Resume `state.next = clink_frame.return_state`
+- Update `operator/args` from frame
+- Set `clink.next = clink_frame.prev_clink`
+
+---
+
 ## Minimal Evaluation Procedure
 
 There are three main states executed during the evaluation of an expression.

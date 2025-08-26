@@ -21,6 +21,7 @@ module core (
     STATE_ERROR,
     MEM_ERROR,
     FETCH_ERROR,
+    WRITE_ERROR,
     EVAL_ERROR,
     APPLY_ERROR
   } error_code_e;
@@ -47,7 +48,7 @@ module core (
     logic [lisp::data_width-1:0] current;
     logic [lisp::data_width-1:0] next;
   } reg_t;
-  reg_t val;
+  reg_t val, clink;
 
   typedef struct packed {
     logic [lisp::addr_width-1:0] current;
@@ -223,9 +224,102 @@ module core (
     end
   end
 
+  //────────────────────────────────────────────────────────────
+  // Memory WRITE FSM Logic
+  //────────────────────────────────────────────────────────────
+  logic [lisp::addr_width-1:0] heap_ptr;
+  logic want_push_clink;
+  logic write_done, write_error;
+
+  logic [lisp::data_width-1:0] clink_return_state;
+
+  typedef enum {
+    WRITE_IDLE,
+    WRITE_PUSH_CLINK_RETURN,
+    WRITE_PUSH_CLINK_FUNC,
+    WRITE_PUSH_CLINK_ARGS,
+    WRITE_PUSH_CLINK_PREV,
+    WRITE_DONE,
+    WRITE_ERR
+  } write_state_t;
+
+  struct packed {
+    write_state_t current;
+    write_state_t next;
+  } write_state;
+
+  always_comb begin
+    write_state.next = write_state.current;
+    write_done   = 1'b0;
+    write_error  = 1'b0;
+    write_enable = 1'b0;
+    write_data   = 'h0;
+
+    unique case (write_state.current)
+      WRITE_IDLE: begin
+        if (want_push_clink) begin
+          write_data = lisp::TYPE_CLINK_HEADER;
+          write_enable = 1'b1;
+          write_state.next = WRITE_PUSH_CLINK_RETURN;
+        end
+      end
+
+      WRITE_PUSH_CLINK_RETURN: begin
+        write_data = clink_return_state;
+        write_enable = 1'b1;
+        write_state.next = WRITE_PUSH_CLINK_FUNC;
+      end
+
+      WRITE_PUSH_CLINK_FUNC: begin
+        // Push car reg as our func because we are evaulating a list like:
+        // (car (cons 1 2))
+        write_data = car_reg.current;
+        write_enable = 1'b1;
+        write_state.next = WRITE_PUSH_CLINK_ARGS;
+      end
+
+      WRITE_PUSH_CLINK_ARGS: begin
+        // See above comment for why this is cdr
+        write_data = cdr_reg.current;
+        write_enable = 1'b1;
+        write_state.next = WRITE_PUSH_CLINK_PREV;
+      end
+
+      WRITE_PUSH_CLINK_PREV: begin
+        write_data = clink.current;
+        write_enable = 1'b1;
+        write_state.next = WRITE_DONE;
+      end
+
+      WRITE_DONE: begin
+        write_done = 1'b1;
+        write_state.next = WRITE_IDLE;
+      end
+
+      WRITE_ERR: write_error = 1'b1;
+
+      default: write_state.next = WRITE_ERR;
+    endcase
+  end
+
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      // Setting this to some "large" number for now.
+      // If our ROM ever goes beyond 'h50, update to 'h100
+      heap_ptr <= 'h50;
+      write_state.current = WRITE_IDLE;
+    end else begin
+      write_state.current <= write_state.next;
+
+      if (write_enable) heap_ptr = heap_ptr + 1;
+    end
+  end
+
+
   logic [lisp::addr_width-1:0] addr_in;
   always_comb begin
     if (read_enable) addr_in = addr_fetch;
+    else if (write_enable) addr_in = heap_ptr;
     else addr_in = '0;
   end
 
@@ -275,16 +369,17 @@ module core (
     state.next = state.current;
     expr.next  = expr.current;
     val.next   = val.current;
+    clink.next = clink.current;
 
     start_fetch = 1'b0;
-    write_enable = 1'b0;
-    write_data = 'h0;
+    want_push_clink = 1'b0;
+
+    clink_return_state = 'h0;
 
     leds = 16'b0000;
     error_code = NO_ERR;
 
     unique case (state.current)
-
       lisp::Boot: begin
         if (boot_done) state.next = lisp::SelectExpr;
       end
@@ -308,8 +403,14 @@ module core (
           send_error(FETCH_ERROR);
         end else if (mem_error) begin
           send_error(MEM_ERROR);
+        end else if (write_error) begin
+          send_error(WRITE_ERROR);
         end else if (fetch_done) begin
           state.next = lisp::Eval;
+        end else if (write_done) begin
+          // TODO: NEED TO DOUBLE CHECK THIS
+          expr.next = car_reg.current;
+          state.next = lisp::StartFetch;
         end
       end
 
@@ -318,6 +419,23 @@ module core (
         unique case (tag_reg.current)
           lisp::TYPE_NUMBER: begin
             val.next = val_reg.current;
+            state.next = lisp::Halt;
+          end
+
+          lisp::TYPE_CONS: begin
+            // TODO: NEED TO DOUBLE CHECK THIS
+            // We are looking at a combination (car, cdr)
+            // Push a CLINK so we can return to where we currently are
+            clink_return_state = lisp::Halt;
+            want_push_clink = 1'b1;
+            state.next = lisp::MemWait;
+          end
+
+          lisp::TYPE_FUNC_PRIM: begin
+            // TODO:
+            // This is just so I can commit CLINK writing without the
+            // system erroring out all the time. Eventually, will probably
+            // CLINK pop.
             state.next = lisp::Halt;
           end
 
@@ -342,12 +460,14 @@ module core (
   always_ff @(posedge clk) begin
     if (rst) begin
       state.current <= lisp::Boot;
-      val.current   <= 'h0;
       expr.current  <= 'h0;
+      val.current   <= 'h0;
+      clink.current <= 'h0;
     end else begin
       state.current <= state.next;
-      val.current   <= val.next;
       expr.current  <= expr.next;
+      val.current   <= val.next;
+      clink.current <= clink.next;
 
       if (entering_error_state) begin
         error_code_reg <= error_code; //Latch the error
